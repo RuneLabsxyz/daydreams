@@ -34,11 +34,13 @@ export class ChainOfThought extends EventEmitter {
     private logger: Logger;
     goalManager: GoalManager;
     public memory: VectorDB;
+    public thinking: boolean;
 
     private readonly outputs = new Map<string, IOHandler>();
 
     constructor(
         private llmClient: LLMClient,
+
         memory: VectorDB,
         initialContext?: ChainOfThoughtContext,
         config: {
@@ -48,6 +50,7 @@ export class ChainOfThought extends EventEmitter {
         super();
         this.setMaxListeners(50);
         this.memory = memory;
+        this.thinking = false;
         this.stepManager = new StepManager();
         this.snapshots = [];
         this.goalManager = new GoalManager();
@@ -1146,7 +1149,7 @@ export class ChainOfThought extends EventEmitter {
     private buildPrompt(tags: Record<string, string> = {}): string {
         this.logger.debug("buildPrompt", "Building LLM prompt");
 
-        const lastSteps = JSON.stringify(this.stepManager.getSteps());
+        const lastSteps = JSON.stringify(this.stepManager.getSteps().slice(0, 10));
         let actionHistory = JSON.stringify(this.context.actionHistory);
 
         const availableOutputs = Array.from(this.outputs.entries()) as [
@@ -1194,10 +1197,6 @@ Focus solely on the goal you have been given. Do not add extra steps or deviate 
 ${lastSteps}
 </LAST_STEPS>
 
-<ACTION_HISTORY>
-${actionHistory}
-</ACTION_HISTORY>
-
 <CONTEXT_SUMMARY>
 ${this.context.worldState}
 
@@ -1228,8 +1227,9 @@ Return a JSON array where each step contains:
 
 <AVAILABLE_ACTIONS>
 Below is a list of actions you may use. 
-Do not repeat actions referencing the action history.
 The "payload" must follow the indicated structure exactly. Do not include any markdown formatting, slashes or comments.
+Make sure the included actions are in line with the given plan. If you are planning to do something in ponziland,
+make sure to include the ponziland_action in the actions list.
 Each action must include:
 - **payload**: The action data structured as per the available actions.
 - **context**: A contextual description or metadata related to the action's execution. This can include statuses, results, or any pertinent information that may influence future actions.
@@ -1254,6 +1254,11 @@ Return only valid JSON
         maxIterations: number = 10
     ): Promise<string> {
         this.emit("think:start", { query: userQuery });
+        if (this.thinking) {
+            return "Already thinking";
+        }
+
+        this.thinking = true;
 
         try {
             // Consult single memory instance for both types of memories
@@ -1272,6 +1277,7 @@ Return only valid JSON
                 maxIterations,
             });
 
+            this.stepManager.clear();
             // Initialize with user query
             this.recordReasoningStep(`User Query: ${userQuery}`, "task", [
                 "user-query",
@@ -1283,7 +1289,7 @@ Return only valid JSON
             // Get initial plan and actions
             const initialResponse = await validateLLMResponseSchema({
                 prompt: this.buildPrompt({ query: userQuery }),
-                schema: z.array(z.object({
+                schema: z.object({
                     plan: z.string().optional(),
                     meta: z.any().optional(),
                     actions: z.array(
@@ -1291,9 +1297,9 @@ Return only valid JSON
                             type: z.string(),
                             context: z.string(),
                             payload: z.any(),
-                        }).optional()
+                        }).describe("Make sure the included actions are in line with the given plan. If you are planning to do something in ponziland, make sure to include the ponziland_action in the actions lis")
                     ),
-                })),
+                }),
                 systemPrompt:
                     "",
                 maxRetries: 3,
@@ -1301,9 +1307,11 @@ Return only valid JSON
                 logger: this.logger,
             });
 
+            console.log('initialResponse', initialResponse);
+
             // Initialize pending actions queue with initial actions
             let pendingActions: CoTAction[] = [
-                // ...initialResponse.actions,
+                ...initialResponse.actions,
             ] as CoTAction[];
 
             // Add initial plan as a step if provided
@@ -1450,6 +1458,7 @@ Return only valid JSON
                                 ["completion"]
                             );
                             this.emit("think:complete", { query: userQuery });
+                            this.thinking = false;
                             return completion.summary;
                         } else {
                             this.recordReasoningStep(
@@ -1489,6 +1498,8 @@ Return only valid JSON
             this.emit("think:error", { query: userQuery, error });
             throw error;
         }
+
+        this.thinking = false;
         return "";
     }
 

@@ -19,7 +19,7 @@ export class MasterProcessor extends BaseProcessor {
     constructor(
         protected llmClient: LLMClient,
         protected character: Character,
-        protected context: string,
+        protected getContext: () => Promise<string>,
         logLevel: LogLevel = LogLevel.ERROR
     ) {
         super(
@@ -58,6 +58,7 @@ export class MasterProcessor extends BaseProcessor {
         this.logger.debug("Processor.process", "Processing content", {
             content,
         });
+        let context = await this.getContext();
         console.log('content', content);
 
         const contentStr =
@@ -91,7 +92,7 @@ export class MasterProcessor extends BaseProcessor {
         </bio>
 
         <balances>
-        ${this.context}
+        ${context}
         </balances>
 
         <goals>
@@ -124,27 +125,41 @@ export class MasterProcessor extends BaseProcessor {
             If you process a message that contains a summary of a request, like the following:
             content The user asked to check auctions and their land stake. The remaining stake time for land at location 514 is 533 minutes. The active auctions are: location 518 - Current Price: 402, location 581 - Current Price: 201, location 73 - Current Price: 182, location 453 - Current Price: 158, location 389 - Current Price: 92, location 523 - Current Price: 4, location 645 - Current Price: 61, location 584 - Current Price: 46, location 391 - Current Price: 46, location 519 - Current Price: 0.
 
-            This next actions in this context should be to increase the stake for the land at location 514, 
             You should try to keep you lands stake above 10 hours, or 600 minutes. 
             You also should bid on auctions cheaper than 50
 
             If you are processing a successful bid, you should share the location of the land and the tx hash of the bid transaction.
-            Only create a new ponziland_action if there is a specific action to take. If you see that a request has already been handled,
-            or that an output has been created, do not take the same action again
+            Only create a new ponziland_action if there is a specific action to take. 
+            If you see that a request has already been handled,or that an output has been created, do not take the same action again
 
             You should share the tx hash of any transaction other than approve
+            Only ever create 1 new ponziland_action per content, and only if there is a specific action to take.
+            If the content contains information like auction data, you should never attempt to check the auctions again.
+            Instead you should consider the data and create an output based on the data, like choosing one to bid on.
         </ponziland_context>
 
         <examples>
             <content>
             The user asked to check the active auctions. The following auctions are active:\nlocation: 522 - Current Price: 845\nlocation: 518 - Current Price: 279\nlocation: 581 - Current Price: 154\nlocation: 73 - Current Price: 141\nlocation: 453 - Current Price: 125\nlocation: 389 - Current Price: 76\nlocation: 645 - Current Price: 52\nlocation: 584 - Current Price: 40\nlocation: 391 - Current Price: 40\nlocation: 519 - Current Price: 0\nThe user then approved ebrother for the ponziland-actions contract."
+            </content>
             <output>
-                <ponziland_action>
-                    increase stake on land 514 with ebrother
-                </ponziland_action>
                 <discord_reply>
                     Going to increase stake on land 514
                 </discord_reply>
+                <ponziland_action>
+                    increase stake on land 514 with ebrother
+                </ponziland_action>
+            </output>
+            <content>
+            The auctions and land prices are already listed in the state. Auctions: location 517 - Current Price 1006, location 456 - Current Price 508, location 522 - Current Price 205, location 518 - Current Price 110, location 581 - Current Price 74, location 73 - Current Price 70, location 453 - Current Price 64, location 389 - Current Price 44, location 645 - Current Price 0, location 584 - Current Price 0.
+            </content>
+            <output>
+                <discord_reply>
+                    Wow land 645 is free! I'm going to bid on it
+                </discord_reply>
+                <ponziland_action>
+                    bid on land 645
+                </ponziland_action>
             </output>
         </examples>
 
@@ -163,6 +178,8 @@ export class MasterProcessor extends BaseProcessor {
         1. Suggested outputs/actions based on the available handlers based on the content and the available handlers. 
         2. If the content is a message, use the personality of the character to determine if the output was successful.
         3. If possible you should include summary of the content in the output for the user to avoid more processing.
+        4. If suggesting multiple outputs, make sure the ponziland_action is always last
+        5. Make sure that discord outputs are at the front of the list, and the channelId is included
         </thinking>
 `;
 

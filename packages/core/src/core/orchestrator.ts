@@ -225,6 +225,7 @@ export class Orchestrator {
             console.log('queue', queue);
             console.log('currentItem', currentItem);
             const outputs = await this.processQueueItem(currentItem, queue);
+            console.log('outputs', outputs);
             collectedOutputs.push(...outputs);
         }
 
@@ -300,10 +301,10 @@ export class Orchestrator {
 
                 switch (handler.role) {
                     case HandlerRole.OUTPUT:
-                        outputs.push({
-                            name: suggestion.name,
-                            data: suggestion.data,
-                        });
+                        /*outputs.push({
+                              name: suggestion.name,
+                              data: suggestion.data,
+                          });*/
                         await this.dispatchToOutput(
                             suggestion.name,
                             suggestion.data
@@ -328,6 +329,7 @@ export class Orchestrator {
                             { input: suggestion.data, result: actionResult }
                         );
                         if (actionResult) {
+                            console.log('actionResult', actionResult);
                             const newItems = Array.isArray(actionResult)
                                 ? actionResult
                                 : [actionResult];
@@ -376,6 +378,7 @@ export class Orchestrator {
         }
 
         const singleResult = await this.processContentItem(content, source);
+        console.log('singleResult', singleResult);
         return singleResult ? [singleResult] : [];
     }
 
