@@ -329,14 +329,14 @@ export class ChainOfThought extends EventEmitter {
 
       <relevant_context>
       ${relevantDocs
-          .map((doc) => `Document: ${doc.title}\n${doc.content}`)
-          .join("\n\n")}
+                .map((doc) => `Document: ${doc.title}\n${doc.content}`)
+                .join("\n\n")}
       </relevant_context>
 
       <relevant_experiences>
       ${relevantExperiences
-          .map((exp) => `Experience: ${exp.action}\n${exp.outcome}`)
-          .join("\n\n")}
+                .map((exp) => `Experience: ${exp.action}\n${exp.outcome}`)
+                .join("\n\n")}
       </relevant_experiences>
 
       <current_game_state>
@@ -465,14 +465,14 @@ export class ChainOfThought extends EventEmitter {
       
       <relevant_context>
       ${relevantDocs
-          .map((doc) => `Document: ${doc.title}\n${doc.content}`)
-          .join("\n\n")}
+                .map((doc) => `Document: ${doc.title}\n${doc.content}`)
+                .join("\n\n")}
       </relevant_context>
 
       <relevant_experiences>
       ${relevantExperiences
-          .map((exp) => `Experience: ${exp.action}\n${exp.outcome}`)
-          .join("\n\n")}
+                .map((exp) => `Experience: ${exp.action}\n${exp.outcome}`)
+                .join("\n\n")}
       </relevant_experiences>
 
       <current_game_state>
@@ -1103,13 +1103,14 @@ export class ChainOfThought extends EventEmitter {
             const result = await output.execute(action);
 
             // Format the result for better readability
+
             const formattedResult =
                 typeof result === "object"
                     ? `${action.type} completed successfully:\n${JSON.stringify(
-                          result,
-                          null,
-                          2
-                      )}`
+                        result,
+                        null,
+                        2
+                    )}`
                     : result;
 
             // Update the action step
@@ -1146,6 +1147,7 @@ export class ChainOfThought extends EventEmitter {
         this.logger.debug("buildPrompt", "Building LLM prompt");
 
         const lastSteps = JSON.stringify(this.stepManager.getSteps());
+        let actionHistory = JSON.stringify(this.context.actionHistory);
 
         const availableOutputs = Array.from(this.outputs.entries()) as [
             string,
@@ -1169,6 +1171,8 @@ export class ChainOfThought extends EventEmitter {
 
 
 
+
+
 You are a Chain of Thought reasoning system. Think through this problem step by step:
 
 1. First, carefully analyze the goal and break it down into logical components
@@ -1189,6 +1193,10 @@ Focus solely on the goal you have been given. Do not add extra steps or deviate 
 <LAST_STEPS>
 ${lastSteps}
 </LAST_STEPS>
+
+<ACTION_HISTORY>
+${actionHistory}
+</ACTION_HISTORY>
 
 <CONTEXT_SUMMARY>
 ${this.context.worldState}
@@ -1220,25 +1228,31 @@ Return a JSON array where each step contains:
 
 <AVAILABLE_ACTIONS>
 Below is a list of actions you may use. 
+Do not repeat actions referencing the action history.
 The "payload" must follow the indicated structure exactly. Do not include any markdown formatting, slashes or comments.
 Each action must include:
 - **payload**: The action data structured as per the available actions.
 - **context**: A contextual description or metadata related to the action's execution. This can include statuses, results, or any pertinent information that may influence future actions.
 
+
 ${availableOutputsSchema}
 
 </AVAILABLE_ACTIONS>
 
+Return only valid JSON
+
 </global_context>
 `;
 
-        return injectTags(tags, prompt);
+        let res = injectTags(tags, prompt);
+        console.log(res);
+        return res;
     }
 
     public async think(
         userQuery: string,
         maxIterations: number = 10
-    ): Promise<void> {
+    ): Promise<string> {
         this.emit("think:start", { query: userQuery });
 
         try {
@@ -1269,7 +1283,7 @@ ${availableOutputsSchema}
             // Get initial plan and actions
             const initialResponse = await validateLLMResponseSchema({
                 prompt: this.buildPrompt({ query: userQuery }),
-                schema: z.object({
+                schema: z.array(z.object({
                     plan: z.string().optional(),
                     meta: z.any().optional(),
                     actions: z.array(
@@ -1277,11 +1291,11 @@ ${availableOutputsSchema}
                             type: z.string(),
                             context: z.string(),
                             payload: z.any(),
-                        })
+                        }).optional()
                     ),
-                }),
+                })),
                 systemPrompt:
-                    "You are a reasoning system that outputs structured JSON only.",
+                    "",
                 maxRetries: 3,
                 llmClient: this.llmClient,
                 logger: this.logger,
@@ -1289,7 +1303,7 @@ ${availableOutputsSchema}
 
             // Initialize pending actions queue with initial actions
             let pendingActions: CoTAction[] = [
-                ...initialResponse.actions,
+                // ...initialResponse.actions,
             ] as CoTAction[];
 
             // Add initial plan as a step if provided
@@ -1334,13 +1348,12 @@ ${availableOutputsSchema}
                         );
                     }
 
-                    const completion = await validateLLMResponseSchema({
-                        prompt: `${this.buildPrompt({ result })}
+                    let prompt = `${this.buildPrompt({ result })}
             ${JSON.stringify({
-                query: userQuery,
-                currentSteps: this.stepManager.getSteps(),
-                lastAction: currentAction.toString() + " RESULT:" + result,
-            })}
+                        query: userQuery,
+                        currentSteps: this.stepManager.getSteps(),
+                        lastAction: currentAction.toString() + " RESULT:" + result,
+                    })}
             <verification_rules>
              # Chain of Verification Analysis
 
@@ -1368,18 +1381,40 @@ ${availableOutputsSchema}
              - Supporting verification evidence (reason)
              - Resource Requirements
              - Continue if resources available? (shouldContinue)
+             
+
+             If you deterime to do stop, make sure the summary string includes all relevant information,
+             including all data retrieved in a query or but should ignore any update messages.
+             If the result includes a transaction hash, make sure to include it in the summary.
+
+
+             <important_rules>
+             - If the result includes a transaction hash, make sure to include it in the summary.
+             - Include all relevant data in the summary.
+             - DO NOT repeat actions
+             - DO NOT continue if the action is complete or if a transaction was successful
+             - DO NOT include unneccesary actions
+             </important_rules>
 
              </verification_rules>
 
              <thinking_process>
              Think in detail here
              </thinking_process>
-               `,
+               `;
+
+                    const completion = await validateLLMResponseSchema({
+                        prompt: prompt,
                         schema: z.object({
                             complete: z.boolean(),
                             reason: z.string(),
                             shouldContinue: z.boolean(),
-                            newActions: z.array(z.any()),
+                            summary: z.string().describe("A summary of everything that has happend, including any data that was retrieved from the internet"),
+                            newActions: z.array(z.object({
+                                type: z.string(),
+                                context: z.string(),
+                                payload: z.any(),
+                            })),
                         }),
                         systemPrompt:
                             "You are a goal completion analyzer using Chain of Verification...",
@@ -1391,11 +1426,13 @@ ${availableOutputsSchema}
                     try {
                         isComplete = completion.complete;
 
+                        console.log('completion', completion);
+
                         if (completion.newActions?.length > 0) {
                             // Add new actions to the end of the pending queue
                             const extractedActions =
                                 completion.newActions.flatMap(
-                                    (plan: any) => plan.actions || []
+                                    (plan: any) => plan || []
                                 );
                             pendingActions.push(...extractedActions);
 
@@ -1407,14 +1444,13 @@ ${availableOutputsSchema}
 
                         if (isComplete || !completion.shouldContinue) {
                             this.recordReasoningStep(
-                                `Goal ${isComplete ? "achieved" : "failed"}: ${
-                                    completion.reason
+                                `Goal ${isComplete ? "achieved" : "failed"}: ${completion.reason
                                 }`,
                                 "system",
                                 ["completion"]
                             );
                             this.emit("think:complete", { query: userQuery });
-                            return;
+                            return completion.summary;
                         } else {
                             this.recordReasoningStep(
                                 `Action completed, continuing execution: ${completion.reason}`,
@@ -1453,6 +1489,7 @@ ${availableOutputsSchema}
             this.emit("think:error", { query: userQuery, error });
             throw error;
         }
+        return "";
     }
 
     /**
@@ -1466,7 +1503,7 @@ ${availableOutputsSchema}
         action: string,
         result: string | Record<string, any>
     ): Promise<string> {
-        return await validateLLMResponseSchema({
+        let res = await validateLLMResponseSchema({
             prompt: `
     # Action Result Summary
     Summarize this action result in a clear, concise way
@@ -1488,13 +1525,16 @@ ${availableOutputsSchema}
     # Rules for output
     Return only the summary text, no additional formatting.
     `,
-            schema: z.any(),
+            schema: z.object({
+                summary: z.string(),
+            }),
             systemPrompt:
                 "You are a result summarizer. Create clear, concise summaries of action results.",
             maxRetries: 3,
             llmClient: this.llmClient,
             logger: this.logger,
-        }).toString();
+        });
+        return res.summary;
     }
 
     /**
@@ -1511,10 +1551,13 @@ ${availableOutputsSchema}
         importance?: number
     ): Promise<void> {
         try {
+            console.log('result', result);
             const formattedOutcome = await this.summarizeActionResult(
                 action,
                 result
             );
+
+            console.log('formattedOutcome', formattedOutcome);
             const calculatedImportance =
                 importance ?? calculateImportance(formattedOutcome);
             const actionWithResult = `${action} RESULT: ${result}`;

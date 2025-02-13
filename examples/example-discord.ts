@@ -35,7 +35,7 @@ async function main() {
     const conversationManager = new ConversationManager(vectorDb);
 
     const llmClient = new LLMClient({
-        model: "anthropic/claude-3-5-sonnet-latest",
+        model: "openrouter:google/gemini-2.0-flash-001", // High performance model
         temperature: 0.3,
     });
 
@@ -89,6 +89,7 @@ async function main() {
         role: HandlerRole.INPUT,
         subscribe: (onData) => {
             discord.startMessageStream(onData);
+            console.log(onData)
             return () => {
                 discord.stopMessageStream();
             };

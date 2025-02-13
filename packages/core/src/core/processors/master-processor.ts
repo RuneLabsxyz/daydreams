@@ -19,6 +19,7 @@ export class MasterProcessor extends BaseProcessor {
     constructor(
         protected llmClient: LLMClient,
         protected character: Character,
+        protected context: string,
         logLevel: LogLevel = LogLevel.ERROR
     ) {
         super(
@@ -57,6 +58,7 @@ export class MasterProcessor extends BaseProcessor {
         this.logger.debug("Processor.process", "Processing content", {
             content,
         });
+        console.log('content', content);
 
         const contentStr =
             typeof content === "string" ? content : JSON.stringify(content);
@@ -80,7 +82,23 @@ export class MasterProcessor extends BaseProcessor {
             })
             .join("\n");
 
-        const prompt = `You are a master processor that can delegate to child processors. Decide on what do to with the following content:
+        const prompt = `
+
+                You are ${this.character.name}
+        
+        <bio>
+        ${this.character.bio}
+        </bio>
+
+        <balances>
+        ${this.context}
+        </balances>
+
+        <goals>
+        ${this.character.instructions.goals.map((goal) => `- ${goal}`).join("\n")}
+        </goals>
+
+        Analyze the following content and decide what to do with it. Output only valid JSON
 
         # New Content to process: 
         ${contentStr}
@@ -88,14 +106,47 @@ export class MasterProcessor extends BaseProcessor {
         # Other context:
         ${otherContext}
 
-        # Available Child Processors:
-        ${processorContext}
-
         # Available Outputs:
         ${outputsSchemaPart}
 
         # Available Actions:
         ${actionsSchemaPart}
+
+        
+        # New Content to process: 
+        ${contentStr}
+
+        # Other context:
+        ${otherContext}
+
+        <ponziland_context>
+            In ponziland you buy lands and stake tokens on them to collect taxes from your neighbors.
+            If you process a message that contains a summary of a request, like the following:
+            content The user asked to check auctions and their land stake. The remaining stake time for land at location 514 is 533 minutes. The active auctions are: location 518 - Current Price: 402, location 581 - Current Price: 201, location 73 - Current Price: 182, location 453 - Current Price: 158, location 389 - Current Price: 92, location 523 - Current Price: 4, location 645 - Current Price: 61, location 584 - Current Price: 46, location 391 - Current Price: 46, location 519 - Current Price: 0.
+
+            This next actions in this context should be to increase the stake for the land at location 514, 
+            You should try to keep you lands stake above 10 hours, or 600 minutes. 
+            You also should bid on auctions cheaper than 50
+
+            If you are processing a successful bid, you should share the location of the land and the tx hash of the bid transaction.
+            Only create a new ponziland_action if there is a specific action to take. If you see that a request has already been handled,
+            or that an output has been created, do not take the same action again
+
+            You should share the tx hash of any transaction other than approve
+        </ponziland_context>
+
+        <examples>
+            <content>
+            The user asked to check the active auctions. The following auctions are active:\nlocation: 522 - Current Price: 845\nlocation: 518 - Current Price: 279\nlocation: 581 - Current Price: 154\nlocation: 73 - Current Price: 141\nlocation: 453 - Current Price: 125\nlocation: 389 - Current Price: 76\nlocation: 645 - Current Price: 52\nlocation: 584 - Current Price: 40\nlocation: 391 - Current Price: 40\nlocation: 519 - Current Price: 0\nThe user then approved ebrother for the ponziland-actions contract."
+            <output>
+                <ponziland_action>
+                    increase stake on land 514 with ebrother
+                </ponziland_action>
+                <discord_reply>
+                    Going to increase stake on land 514
+                </discord_reply>
+            </output>
+        </examples>
 
         <thinking id="processor_decision">
         1. Decide on what do to with the content. If you an output or action is suggested, you should use it.
@@ -119,7 +170,7 @@ export class MasterProcessor extends BaseProcessor {
             const result = await validateLLMResponseSchema({
                 prompt,
                 systemPrompt:
-                    "You are an expert system that analyzes content and provides comprehensive analysis with appropriate automated responses. You can delegate to specialized processors when needed.",
+                    "",
                 schema: z.object({
                     classification: z.object({
                         contentType: z.string(),
@@ -127,19 +178,20 @@ export class MasterProcessor extends BaseProcessor {
                         delegateToProcessor: z
                             .string()
                             .optional()
+                            .nullable()
                             .describe(
                                 "The name of the processor to delegate to"
                             ),
                         context: z.object({
                             topic: z.string(),
-                            urgency: z.enum(["high", "medium", "low"]),
+                            urgency: z.string().optional(),
                             additionalContext: z.string(),
                         }),
                     }),
                     enrichment: z.object({
                         summary: z.string().max(1000),
                         topics: z.array(z.string()).max(20),
-                        sentiment: z.enum(["positive", "negative", "neutral"]),
+                        sentiment: z.string(),
                         entities: z.array(z.string()),
                         intent: z
                             .string()
@@ -211,6 +263,9 @@ export class MasterProcessor extends BaseProcessor {
                                 result.classification.delegateToProcessor,
                         }
                     );
+                    console.log(content, otherContext, ioContext);
+                    otherContext += `\n\n# Summary of the content:
+                    ${result.enrichment.summary}`;
                     return childProcessor.process(
                         content,
                         otherContext,

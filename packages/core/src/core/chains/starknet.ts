@@ -72,14 +72,30 @@ export class StarknetChain implements IChain {
     public async write(call: Call): Promise<any> {
         try {
             call.calldata = CallData.compile(call.calldata || []);
-            const { transaction_hash } = await this.account.execute(call);
-            return this.account.waitForTransaction(transaction_hash, {
-                retryInterval: 1000,
+            let res: any;
+            const { transaction_hash } = await this.account.execute(call).catch((error: Error) => {
+                console.log('error', error.message);
+                res = error.message;
+                return { transaction_hash: null };
             });
+
+            if (!transaction_hash) {
+                return res;
+            }
+
+            res = await this.account.waitForTransaction(transaction_hash, {
+                retryInterval: 1000,
+            })
+            return res;
         } catch (error) {
             return error instanceof Error
                 ? error
                 : new Error("Unknown error occurred");
         }
+    }
+
+    public async getBlockTime(): Promise<number> {
+        const block = await this.provider.getBlock('latest');
+        return block.timestamp;
     }
 }

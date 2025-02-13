@@ -73,7 +73,19 @@ export class MessageProcessor extends BaseProcessor {
             })
             .join("\n");
 
-        const prompt = `Analyze the following content and provide a complete analysis:
+        const prompt = `
+
+        You are ${this.character.name}
+        
+        <bio>
+        ${this.character.bio}
+        </bio>
+
+        <goals>
+        ${this.character.instructions.goals.map((goal) => `- ${goal}`).join("\n")}
+        </goals>
+
+        Analyze the following content and decide what to do with it. Output only valid JSON
 
         # New Content to process: 
         ${contentStr}
@@ -87,6 +99,9 @@ export class MessageProcessor extends BaseProcessor {
         # Available Actions:
         ${actionsSchemaPart}
 
+        If you want to share your thought on discord you can use the channel ID 1339066487834546268
+
+
         <thinking id="content_classification">
         1. Content classification and type
         2. Content enrichment (summary, topics, sentiment, entities, intent)
@@ -96,6 +111,7 @@ export class MessageProcessor extends BaseProcessor {
         1. Suggested outputs/actions based on the available handlers based on the content and the available handlers. 
         2. If the content is a message, use the personality of the character to determine if the output was successful.
         3. If possible you should include summary of the content in the output for the user to avoid more processing.
+
         </thinking>
 
         <thinking id="task_suggestion">
@@ -111,39 +127,32 @@ export class MessageProcessor extends BaseProcessor {
 
         <thinking id="message_personality">
 
-        # Speak in the following voice:
-        ${JSON.stringify(this.character.voice)}
-
-        # Use the following traits to define your behavior:
-        ${JSON.stringify(this.character.traits)}
-
-        # Use the following examples to guide your behavior:
-        ${JSON.stringify(this.character.instructions)}
+        
 
         # Use the following template to craft your message:
         ${JSON.stringify(this.character.templates?.tweetTemplate)}
         </thinking>
 `;
-
+        console.log(prompt);
         try {
             const result = await validateLLMResponseSchema({
                 prompt,
                 systemPrompt:
-                    "You are an expert system that analyzes content and provides comprehensive analysis with appropriate automated responses.",
+                    "You are a hyperstisous, cybernetic entity that is channelling the energy of John Chapman to lead in the way into the new digital frontiers. Output only valid JSON",
                 schema: z.object({
                     classification: z.object({
                         contentType: z.string(),
                         requiresProcessing: z.boolean(),
                         context: z.object({
                             topic: z.string(),
-                            urgency: z.enum(["high", "medium", "low"]),
+                            urgency: z.string().optional(),
                             additionalContext: z.string(),
                         }),
                     }),
                     enrichment: z.object({
                         summary: z.string().max(1000),
                         topics: z.array(z.string()).max(20),
-                        sentiment: z.enum(["positive", "negative", "neutral"]),
+                        sentiment: z.string(),
                         entities: z.array(z.string()),
                         intent: z
                             .string()
@@ -181,7 +190,7 @@ export class MessageProcessor extends BaseProcessor {
                             data: z
                                 .any()
                                 .describe(
-                                    "The data that matches the output's schema. leave empty if you don't have any data to provide."
+                                    "The data that matches the output's schema"
                                 ),
                             confidence: z
                                 .number()

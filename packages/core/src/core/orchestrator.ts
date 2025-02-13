@@ -194,8 +194,7 @@ export class Orchestrator {
         } catch (error) {
             this.logger.error(
                 "Orchestrator.dispatchToInput",
-                `dispatchToInput Error: ${
-                    error instanceof Error ? error.message : String(error)
+                `dispatchToInput Error: ${error instanceof Error ? error.message : String(error)
                 }`
             );
             throw error;
@@ -223,6 +222,8 @@ export class Orchestrator {
 
         while (queue.length > 0) {
             const currentItem = queue.shift()!;
+            console.log('queue', queue);
+            console.log('currentItem', currentItem);
             const outputs = await this.processQueueItem(currentItem, queue);
             collectedOutputs.push(...outputs);
         }
@@ -287,6 +288,7 @@ export class Orchestrator {
 
             // Process any suggested outputs or actions.
             for (const suggestion of result.suggestedOutputs ?? []) {
+                console.log('suggestion', suggestion);
                 const handler = this.ioHandlers.get(suggestion.name);
                 if (!handler) {
                     this.logger.warn(
@@ -312,7 +314,7 @@ export class Orchestrator {
                             suggestion.name,
                             suggestion.data
                         );
-                        break;
+                        continue;
 
                     case HandlerRole.ACTION: {
                         const actionResult = await this.dispatchToAction(
@@ -330,13 +332,14 @@ export class Orchestrator {
                                 ? actionResult
                                 : [actionResult];
                             for (const newItem of newItems) {
+                                console.log('newItem', newItem);
                                 queue.push({
                                     data: newItem,
                                     source: suggestion.name,
                                 });
                             }
                         }
-                        break;
+                        continue;
                     }
 
                     default:
@@ -419,7 +422,6 @@ export class Orchestrator {
         const availableActions = Array.from(this.ioHandlers.values()).filter(
             (h) => h.role === HandlerRole.ACTION
         );
-
         // Process the content.
         const result = await this.processor.process(
             content,

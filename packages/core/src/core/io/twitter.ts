@@ -141,7 +141,8 @@ export class TwitterClient {
             // Convert AsyncGenerator to array and process
             const mentionsArray: Tweet[] = [];
             for await (const tweet of mentions.tweets) {
-                mentionsArray.push(tweet);
+                if (tweet.replies == 0)
+                    mentionsArray.push(tweet);
             }
 
             // Filter and format mentions
@@ -149,6 +150,12 @@ export class TwitterClient {
                 .filter((tweet) => {
                     // Skip own tweets and already processed tweets
                     if (tweet.userId === this.credentials.username) {
+                        console.log('skipping own tweet', tweet);
+                        return false;
+                    }
+
+                    if (tweet.replies == 0) {
+                        console.log('skipping reply', tweet);
                         return false;
                     }
 

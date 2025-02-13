@@ -32,8 +32,7 @@ export interface MessageData {
 
 export const messageSchema = z.object({
     content: z.string().describe("The content of the message"),
-    channelId: z.string().describe("The channel ID where the message is sent"),
-    sendBy: z.string().optional().describe("The user ID of the sender"),
+    channelId: z.string().describe("The channel ID where the message is sent. Should always be a number, and default to 1339066487834546268"),
     conversationId: z
         .string()
         .optional()
@@ -92,9 +91,11 @@ export class DiscordClient {
         this.messageListener = (message: Message) => {
             // Here, you could decide what "data" looks like
             // E.g., check if the bot was mentioned, etc.
+            console.log(message.author.username);
+            console.log(this.credentials);
 
             if (
-                message.author.displayName == this.credentials.discord_bot_name
+                message.author.username.toLowerCase() == this.credentials.discord_bot_name.toLowerCase()
             ) {
                 console.log(
                     `Skipping message from ${this.credentials.discord_bot_name}`
@@ -147,8 +148,10 @@ export class DiscordClient {
             name: "discord_message",
             execute: async (data: T) => {
                 // Cast the result to ProcessableContent to satisfy the IOHandler signature.
+                console.log(data);
+                let msg = (data as any);
                 return (await this.sendMessage(
-                    data as MessageData
+                    msg as MessageData
                 )) as unknown as ProcessableContent;
             },
             outputSchema: messageSchema,
@@ -159,7 +162,7 @@ export class DiscordClient {
         return channel?.type === ChannelType.GuildText;
     }
 
-    private async sendMessage(data: MessageData): Promise<{
+    private async sendMessage(data: any): Promise<{
         success: boolean;
         messageId?: string;
         content?: string;
@@ -185,12 +188,19 @@ export class DiscordClient {
                     error: "DRY_RUN",
                 };
             }
+            if (data.payload) {
+                data.channelId = data.payload.channelId;
+                data.content = data.payload.content;
+            }
+
+
             if (!data?.channelId || !data?.content) {
                 return {
                     success: false,
                     error: "Channel ID and content are required",
                 };
             }
+
 
             const channel = this.client.channels.cache.get(data?.channelId);
             if (!this.getIsValidTextChannel(channel)) {

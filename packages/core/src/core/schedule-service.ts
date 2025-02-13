@@ -18,7 +18,7 @@ export class SchedulerService {
         private context: IOrchestratorContext,
         private orchestrator: Orchestrator,
         private pollMs: number = 10_000
-    ) {}
+    ) { }
 
     public start() {
         if (this.intervalId) {

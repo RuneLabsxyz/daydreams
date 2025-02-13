@@ -325,7 +325,6 @@ export interface EnrichedContent {
 
 export interface Thought {
     content: string;
-    confidence: number;
     context?: Record<string, any>;
     timestamp: Date;
     type: string;

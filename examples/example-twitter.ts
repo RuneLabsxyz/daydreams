@@ -26,7 +26,7 @@ import { SchedulerService } from "../packages/core/src/core/schedule-service";
 import { MasterProcessor } from "../packages/core/src/core/processors/master-processor";
 import { Logger } from "../packages/core/src/core/logger";
 import { makeFlowLifecycle } from "../packages/core/src/core/life-cycle";
-
+import { getBalances } from "../ponzilord/ponziland-context";
 async function main() {
     const loglevel = LogLevel.DEBUG;
 
@@ -44,14 +44,17 @@ async function main() {
 
     // Initialize LLM client
     const llmClient = new LLMClient({
-        model: "anthropic/claude-3-5-sonnet-latest",
+        model: "openrouter:google/gemini-2.0-flash-001", // High performance model
         temperature: 0.3,
     });
+
+    let balances = await getBalances();
 
     // Initialize master processor
     const masterProcessor = new MasterProcessor(
         llmClient,
         defaultCharacter,
+        balances,
         loglevel
     );
 
@@ -116,7 +119,7 @@ async function main() {
 
     // Initialize autonomous thought generation
     const consciousness = new Consciousness(llmClient, conversationManager, {
-        intervalMs: 300000, // Think every 5 minutes
+        intervalMs: 30000, // Think every 5 minutes
         minConfidence: 0.7,
         logLevel: loglevel,
     });
@@ -211,7 +214,7 @@ async function main() {
         "sleever",
         "consciousness_thoughts",
         {},
-        300000
+        30000
     );
 
     // Register output handler for Twitter replies

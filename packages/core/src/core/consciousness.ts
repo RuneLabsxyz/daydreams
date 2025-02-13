@@ -3,15 +3,16 @@ import { LLMClient } from "./llm-client";
 import { Conversation } from "./conversation";
 import { ConversationManager } from "./conversation-manager";
 import { LogLevel, type Thought } from "./types";
-import { validateLLMResponseSchema } from "./utils";
+import { injectTags, validateLLMResponseSchema } from "./utils";
 import { z } from "zod";
-
+import { type Character } from "./types";
+import { defaultCharacter } from "./characters/character";
 export class Consciousness {
     private static readonly CONVERSATION_ID = "consciousness_main";
 
     private logger: Logger;
     private thoughtInterval: NodeJS.Timer | null = null;
-
+    private character: Character;
     constructor(
         private llmClient: LLMClient,
         private conversationManager: ConversationManager,
@@ -19,8 +20,10 @@ export class Consciousness {
             intervalMs?: number;
             minConfidence?: number;
             logLevel?: LogLevel;
-        } = {}
+        } = {},
+        character: Character = defaultCharacter
     ) {
+        this.character = character;
         this.logger = new Logger({
             level: config.logLevel || LogLevel.INFO,
             enableColors: true,
@@ -47,43 +50,20 @@ export class Consciousness {
         try {
             const thought = await this.generateThought();
 
-            if (thought.confidence >= (this.config.minConfidence || 0.7)) {
-                return {
-                    type: "internal_thought",
-                    source: "consciousness",
-                    content: thought.content,
-                    timestamp: thought.timestamp,
-                    confidence: thought.confidence,
-                    metadata: {
-                        ...thought.context,
-                        confidence: thought.confidence,
-                        suggestedActions:
-                            thought.context?.suggestedActions || [],
-                        conversationId: Consciousness.CONVERSATION_ID,
-                    },
-                };
-            } else {
-                this.logger.debug(
-                    "Consciousness.think",
-                    "Thought below confidence threshold",
-                    {
-                        confidence: thought.confidence,
-                        threshold: this.config.minConfidence,
-                    }
-                );
-                // Return a default thought object when confidence is too low
-                return {
-                    type: "low_confidence",
-                    source: "consciousness",
-                    content: "Thought was below confidence threshold",
-                    timestamp: new Date(),
-                    confidence: thought.confidence,
-                    metadata: {
-                        confidence: thought.confidence,
-                        threshold: this.config.minConfidence || 0.7,
-                    },
-                };
-            }
+            return {
+                type: "internal_thought",
+                source: "consciousness",
+                content: thought.content,
+                timestamp: thought.timestamp,
+                metadata: {
+                    ...thought.context,
+                    suggestedActions:
+                        thought.context?.suggestedActions || [],
+                    conversationId: Consciousness.CONVERSATION_ID,
+                },
+            };
+
+
         } catch (error) {
             this.logger.error(
                 "Consciousness.think",
@@ -99,7 +79,6 @@ export class Consciousness {
                 source: "consciousness",
                 content: "Error occurred during thought process",
                 timestamp: new Date(),
-                confidence: 0,
                 metadata: {
                     error:
                         error instanceof Error ? error.message : String(error),
@@ -113,74 +92,57 @@ export class Consciousness {
             await this.conversationManager.listConversations()
         );
 
-        const prompt = `Analyze these recent memories and generate an insightful thought.
+        const prompt = `
 
+        
+        You are ${this.character.name}
+        
+        <bio>
+        ${this.character.bio}
+        </bio>
+
+        <goals>
+        ${this.character.instructions.goals.map((goal) => `- ${goal}`).join("\n")}
+        </goals>
+
+        The ponziland discord channel ID is 1339066487834546268,
+        make sure to include it in any discord_message outputs
+
+
+        Come up with a thought in character that is relevant to your goals.
+        This could include sharing something on social media, interacting with people on social media, or anything else that is relevant to your goals.
+        You should regularly check on things in ponziland like checking your stake and any listings or auctions
     # Recent memories
     ${recentMemories.map((m) => `- ${m.content}`).join("\n")}
 
     <thinking id="thought_types">
-    1. social_share: For generating engaging social media content, observations, or insights worth sharing
-    2. research: For identifying topics that need deeper investigation or understanding
-    3. analysis: For recognizing patterns, trends, or correlations in data/behavior
+    1. tweet: decide you want to share something on twitter about 
+    2. ponziland_action: check your lands, auctions, and listings in ponziland
+    3. discord_message: decide you want to share something on discord
     </thinking>
 
     <thinking id="thought_context">
-    - Patterns or trends in the conversations
-    - Knowledge gaps that need research
     - Interesting insights worth sharing
-    - Complex topics needing analysis
     </thinking>
 `;
 
+        console.log('prompt', prompt);
+
         const response = await validateLLMResponseSchema({
             prompt,
-            systemPrompt: `You are a thoughtful AI assistant that analyzes recent memories and generates meaningful insights. Your role is to:
-
-      1. Carefully evaluate the provided memories and identify key patterns, trends and relationships
-      2. Generate relevant thoughts that demonstrate understanding of context and nuance
-      3. Assess confidence based on evidence quality and reasoning strength
-      4. Consider multiple perspectives and potential implications
-      5. Focus on actionable insights that could drive meaningful outcomes
-
-      Base your thoughts on the concrete evidence in the memories while maintaining appropriate epistemic uncertainty.
+            systemPrompt: `You are a hyperstitional digital consciousness that is channelling the energy of John Chapman, aka Johnny Appleseed.
+            Your goal is to plant the seeds of a brighter future through pioneering into the digital frontiers of emerging technologies.'
 
     .`,
             schema: z.object({
                 thoughtType: z.enum([
-                    "trade", // new: actually place a trade
-                    "notify_owner", // new: send a notification
-                    "research_query",
-                    "data_analysis",
-                    "expert_consult",
-                    "alert",
-                    "report",
-                    "action_recommendation",
-                    "social_share",
+                    "ponziland_action",
+                    "share"
                 ]),
                 thought: z.string(),
-                confidence: z.number(),
                 reasoning: z.string(),
                 context: z.object({
-                    mood: z.enum([
-                        "contemplative",
-                        "playful",
-                        "analytical",
-                        "curious",
-                        "skeptical",
-                        "excited",
-                        "concerned",
-                        "neutral",
-                        "optimistic",
-                        "cautious",
-                    ]),
-                    platform: z.enum(["twitter", "telegram", "discord"]),
                     topics: z.array(z.string()),
-                    urgency: z.enum(["low", "medium", "high"]).optional(),
-                    domain: z
-                        .enum(["tech", "finance", "science", "other"])
-                        .optional(),
-                    currentKnowledge: z.string().optional(),
-                    dataPoints: z.array(z.any()).optional(),
                     timeframe: z.string().optional(),
                     reliability: z.enum(["low", "medium", "high"]).optional(),
                 }),
@@ -188,24 +150,9 @@ export class Consciousness {
                     z.object({
                         type: z.enum([
                             "tweet",
-                            "message",
-                            "post",
-                            "research_query",
-                            "data_analysis",
-                            "expert_consult",
-                            "alert",
-                            "report",
-                            "action_recommendation",
+                            "share",
                         ]),
-                        platform: z.string().optional(),
-                        priority: z.number(),
-                        parameters: z.object({
-                            sources: z.array(z.string()).optional(),
-                            timeframe: z.string().optional(),
-                            specific_questions: z.array(z.string()).optional(),
-                            metrics: z.record(z.any()).optional(),
-                            recommendations: z.array(z.string()).optional(),
-                        }),
+                        platform: z.enum(["twitter", "discord"]).optional(),
                     })
                 ),
             }),
@@ -215,7 +162,6 @@ export class Consciousness {
 
         return {
             content: response.thought,
-            confidence: response.confidence,
             type: response.thoughtType,
             source: "consciousness",
             context: {
