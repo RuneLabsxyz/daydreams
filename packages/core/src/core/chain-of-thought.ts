@@ -35,6 +35,8 @@ export class ChainOfThought extends EventEmitter {
     goalManager: GoalManager;
     public memory: VectorDB;
     public thinking: boolean;
+    private getContext: () => Promise<string>;
+
 
     private readonly outputs = new Map<string, IOHandler>();
 
@@ -42,10 +44,11 @@ export class ChainOfThought extends EventEmitter {
         private llmClient: LLMClient,
 
         memory: VectorDB,
+        getContext: () => Promise<string>,
         initialContext?: ChainOfThoughtContext,
         config: {
             logLevel?: LogLevel;
-        } = {}
+        } = {},
     ) {
         super();
         this.setMaxListeners(50);
@@ -54,6 +57,7 @@ export class ChainOfThought extends EventEmitter {
         this.stepManager = new StepManager();
         this.snapshots = [];
         this.goalManager = new GoalManager();
+        this.getContext = getContext;
 
         this.context = initialContext ?? {
             worldState: "",
@@ -1215,7 +1219,7 @@ ${this.context.worldState}
 
 ## Output Format
 Return a JSON array where each step contains:
-- reasoning: A short explanation of what actions you are executing and why
+- reasoning: A short explanation of what actions you are executing and why. If
 - actions: A list of actions to be executed. You can either use ${this.getAvailableOutputs()}
 
 <AVAILABLE_ACTIONS>
@@ -1229,6 +1233,8 @@ Each action must include:
 
 <IMPORTANT_RULES>
 - NEVER include multiple transactions in the same output.
+- If you are returning no actions because none are neccesary for the query, then make sure your reasoning includes a sufficient and detailed response to the query.
+- If you are returning no actions because the answer to the query is in the current context, then make sure you include a detailed response to the query
 </IMPORTANT_RULES>
 
 ${availableOutputsSchema}
@@ -1286,14 +1292,14 @@ Return only valid JSON
             const initialResponse = await validateLLMResponseSchema({
                 prompt: this.buildPrompt({ query: userQuery }),
                 schema: z.object({
-                    reasoning: z.string().optional().describe("A Reasoning for the actions you are taking"),
-                    meta: z.any().optional(),
+                    summary: z.string().optional().describe("A summary of the reasoning for the actions you are taking"),
+                    response: z.any().optional(),
                     actions: z.array(
                         z.object({
                             type: z.string(),
                             context: z.string(),
                             payload: z.any(),
-                        }).describe("MANDATORY TO INCLUDE ALL ACTIONS RELEVANT TO THE REASONING")
+                        })
                     ),
                 }),
                 systemPrompt:
@@ -1303,6 +1309,11 @@ Return only valid JSON
                 logger: this.logger,
             });
 
+            if (!initialResponse.actions || initialResponse.actions.length === 0) {
+                this.thinking = false;
+                return initialResponse.response || "No actions to take and no reasoning provided";
+            }
+
             console.log('initialResponse', initialResponse);
 
             // Initialize pending actions queue with initial actions
@@ -1311,9 +1322,9 @@ Return only valid JSON
             ] as CoTAction[];
 
             // Add initial plan as a step if provided
-            if (initialResponse.reasoning) {
+            if (initialResponse.summary) {
                 this.recordReasoningStep(
-                    `Initial reasoning: ${initialResponse.reasoning}`,
+                    `Initial reasoning: ${initialResponse.summary}`,
                     "planning",
                     ["initial-plan"]
                 );
@@ -1352,7 +1363,9 @@ Return only valid JSON
                         );
                     }
 
-                    let prompt = `${this.buildPrompt({ result })}
+                    let balances = await this.getContext();
+
+                    let prompt = `${this.buildPrompt({ result, balances })}
             ${JSON.stringify({
                         query: userQuery,
                         currentSteps: this.stepManager.getSteps(),
@@ -1385,6 +1398,7 @@ Return only valid JSON
              - Supporting verification evidence (reason)
              - Resource Requirements
              - Continue if resources available? (shouldContinue)
+             - Summary of all actions and data retrieved
              
 
              If you deterime to do stop, make sure the summary string includes all relevant information,
@@ -1403,9 +1417,16 @@ Return only valid JSON
 
              </verification_rules>
 
-             <thinking_process>
-             Think in detail here
-             </thinking_process>
+             <balances>
+                Remember all transactions involving token values should use the value in wei, so 10^18 times what is provided here
+                ${balances}
+             </balances>
+
+             <new_actions_info>
+                Remember that address on starknet are shorter than ethereum, so make sure you addresses are exactly what is in the context.
+                Remember that you should return a full summary when opting not to continue with any new actions
+             </new_actions_info>
+            
                `;
 
                     const completion = await validateLLMResponseSchema({

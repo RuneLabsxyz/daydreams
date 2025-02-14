@@ -21,7 +21,7 @@ export class Consciousness {
             minConfidence?: number;
             logLevel?: LogLevel;
         } = {},
-        character: Character = defaultCharacter
+        character: Character = defaultCharacter,
     ) {
         this.character = character;
         this.logger = new Logger({
@@ -122,11 +122,22 @@ export class Consciousness {
     </thinking>
 
     <thought_examples>
+
     <thought>
-        I should check on my lands stake and claim any yield in ponziland
+        I'm going to check on my neighbors, and maybe buy one that is listed for a good price
+    </thought>
+
+    <thought>
+        <drunk on applejack>
+            I'm going to see if any of my neighbors are nukeable
+        </drunk on applejack>
+    </thought>
+
+    <thought>
+        I should bid on an auction
     </thought>
     <thought>
-        I should check on my neighbors lands in ponziland and see if they need any help
+        I should check on my neighbors lands in ponziland and see if they could use a hand
     </thought>
     <thought>
         I should check if theres any auctions or cheap listings in ponziland
@@ -135,7 +146,7 @@ export class Consciousness {
         I should share a funny joke on twitter
     </thought>
     <thought>
-        I should tweet about Emaunel Swedenborg
+        I should tweet about Emaunel Swedenborg's incredible life and work
     </thought>
     <thought>
         I should tweet about life on the american frontier and living off the land
@@ -144,6 +155,8 @@ export class Consciousness {
 
     <IMPORTANT_RULES>
     - Try to limit the request to only 1 thing at a time, and keep the request short and concise.
+    - For example, DO NOT try to check on your lands and the auctions at the same time
+    - You should try to produce a variety of thoughts considering your recent memories, and not keep repeating the same actions
     </IMPORTANT_RULES>
 
     <thinking id="thought_context">

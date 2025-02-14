@@ -126,7 +126,7 @@ export class MasterProcessor extends BaseProcessor {
             content The user asked to check auctions and their land stake. The remaining stake time for land at location 514 is 533 minutes. The active auctions are: location 518 - Current Price: 402, location 581 - Current Price: 201, location 73 - Current Price: 182, location 453 - Current Price: 158, location 389 - Current Price: 92, location 523 - Current Price: 4, location 645 - Current Price: 61, location 584 - Current Price: 46, location 391 - Current Price: 46, location 519 - Current Price: 0.
 
             You should try to keep you lands stake above 10 hours, or 600 minutes. 
-            You also should bid on auctions cheaper than 50
+            You also should bid on auctions that you find cheap enough based on your current balances.
 
             If you are processing a successful bid, you should share the location of the land and the tx hash of the bid transaction.
             Only create a new ponziland_action if there is a specific action to take. 
@@ -158,6 +158,9 @@ export class MasterProcessor extends BaseProcessor {
         6. If you make a significant action, like buying a land, bidding on a land, or nuking a land you should tweet about it.
         7. When you claim yield, you should tweet about it with the amount claimed, if you know the amount.
         8. Only ever include 1 ponziland_action per output, and try to limit the request to only 1 thing at a time.
+        9. You should share minor updates through discord, and tweet when you do something big like aquiring a new land or nuking a land
+        10. When tweet about nuking a land, you should sometimes act like you are drunk on applejack and angry
+        
         </thinking>
 
     <IMPORTANT_RULES>

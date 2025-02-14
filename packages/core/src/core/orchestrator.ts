@@ -224,9 +224,11 @@ export class Orchestrator {
             const currentItem = queue.shift()!;
             console.log('queue', queue);
             console.log('currentItem', currentItem);
-            const outputs = await this.processQueueItem(currentItem, queue);
-            console.log('outputs', outputs);
-            collectedOutputs.push(...outputs);
+            if (currentItem.data) {
+                const outputs = await this.processQueueItem(currentItem, queue);
+                console.log('outputs', outputs);
+                collectedOutputs.push(...outputs);
+            }
         }
 
         return collectedOutputs;
@@ -301,10 +303,11 @@ export class Orchestrator {
 
                 switch (handler.role) {
                     case HandlerRole.OUTPUT:
-                        outputs.push({
-                            name: suggestion.name,
-                            data: suggestion.data,
-                        });
+
+                        /* outputs.push({
+                                name: suggestion.name,
+                                data: suggestion.data,
+                            }); */
                         await this.dispatchToOutput(
                             suggestion.name,
                             suggestion.data
@@ -334,11 +337,13 @@ export class Orchestrator {
                                 ? actionResult
                                 : [actionResult];
                             for (const newItem of newItems) {
-                                console.log('newItem', newItem);
-                                queue.push({
-                                    data: newItem,
-                                    source: suggestion.name,
-                                });
+                                if (newItem) {
+                                    console.log('newItem', newItem);
+                                    queue.push({
+                                        data: newItem,
+                                        source: suggestion.name,
+                                    });
+                                }
                             }
                         }
                         continue;
