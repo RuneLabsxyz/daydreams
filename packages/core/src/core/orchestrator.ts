@@ -301,10 +301,10 @@ export class Orchestrator {
 
                 switch (handler.role) {
                     case HandlerRole.OUTPUT:
-                        /*outputs.push({
-                              name: suggestion.name,
-                              data: suggestion.data,
-                          });*/
+                        outputs.push({
+                            name: suggestion.name,
+                            data: suggestion.data,
+                        });
                         await this.dispatchToOutput(
                             suggestion.name,
                             suggestion.data

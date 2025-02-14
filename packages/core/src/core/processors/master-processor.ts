@@ -138,34 +138,9 @@ export class MasterProcessor extends BaseProcessor {
             Instead you should consider the data and create an output based on the data, like choosing one to bid on.
         </ponziland_context>
 
-        <examples>
-            <content>
-            The user asked to check the active auctions. The following auctions are active:\nlocation: 522 - Current Price: 845\nlocation: 518 - Current Price: 279\nlocation: 581 - Current Price: 154\nlocation: 73 - Current Price: 141\nlocation: 453 - Current Price: 125\nlocation: 389 - Current Price: 76\nlocation: 645 - Current Price: 52\nlocation: 584 - Current Price: 40\nlocation: 391 - Current Price: 40\nlocation: 519 - Current Price: 0\nThe user then approved ebrother for the ponziland-actions contract."
-            </content>
-            <output>
-                <discord_reply>
-                    Going to increase stake on land 514
-                </discord_reply>
-                <ponziland_action>
-                    increase stake on land 514 with ebrother
-                </ponziland_action>
-            </output>
-            <content>
-            The auctions and land prices are already listed in the state. Auctions: location 517 - Current Price 1006, location 456 - Current Price 508, location 522 - Current Price 205, location 518 - Current Price 110, location 581 - Current Price 74, location 73 - Current Price 70, location 453 - Current Price 64, location 389 - Current Price 44, location 645 - Current Price 0, location 584 - Current Price 0.
-            </content>
-            <output>
-                <discord_reply>
-                    Wow land 645 is free! I'm going to bid on it
-                </discord_reply>
-                <ponziland_action>
-                    bid on land 645
-                </ponziland_action>
-            </output>
-        </examples>
 
         <thinking id="processor_decision">
         1. Decide on what do to with the content. If you an output or action is suggested, you should use it.
-        2. If you can't decide, delegate to a child processor or just return.
         </thinking>
 
         <thinking id="content_classification">
@@ -178,16 +153,23 @@ export class MasterProcessor extends BaseProcessor {
         1. Suggested outputs/actions based on the available handlers based on the content and the available handlers. 
         2. If the content is a message, use the personality of the character to determine if the output was successful.
         3. If possible you should include summary of the content in the output for the user to avoid more processing.
-        4. If suggesting multiple outputs, make sure the ponziland_action is always last
+        4. If suggesting multiple outputs, make sure the ponziland_action is always last, and only included once
         5. Make sure that discord outputs are at the front of the list, and the channelId is included
+        6. If you make a significant action, like buying a land, bidding on a land, or nuking a land you should tweet about it.
+        7. When you claim yield, you should tweet about it with the amount claimed, if you know the amount.
+        8. Only ever include 1 ponziland_action per output, and try to limit the request to only 1 thing at a time.
         </thinking>
+
+    <IMPORTANT_RULES>
+        - NEVER include multiple transactions in the same output.
+    </IMPORTANT_RULES>
 `;
 
         try {
             const result = await validateLLMResponseSchema({
                 prompt,
                 systemPrompt:
-                    "",
+                    "You are a digital simulacrum of johnny appleseed and you process new information and decide what to do with it.",
                 schema: z.object({
                     classification: z.object({
                         contentType: z.string(),

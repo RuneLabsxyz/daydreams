@@ -1106,11 +1106,11 @@ export class ChainOfThought extends EventEmitter {
             const result = await output.execute(action);
 
             // Format the result for better readability
-
+            let summary = await this.summarizeActionResult(action.type, result);
             const formattedResult =
                 typeof result === "object"
                     ? `${action.type} completed successfully:\n${JSON.stringify(
-                        result,
+                        summary,
                         null,
                         2
                     )}`
@@ -1212,28 +1212,24 @@ ${this.context.worldState}
 {{custom_validation_rules}}
 
 
-## Required Validations
-1. Resource costs must be verified before action execution
-2. Building requirements must be confirmed before construction
-3. Entity existence must be validated before interaction
-4. If the required amounts are not available, end the sequence.
-{{additional_validations}}
 
 ## Output Format
 Return a JSON array where each step contains:
-- plan: A short explanation of what you will do
-- meta: A metadata object with requirements for the step. Find this in the context.
+- reasoning: A short explanation of what actions you are executing and why
 - actions: A list of actions to be executed. You can either use ${this.getAvailableOutputs()}
 
 <AVAILABLE_ACTIONS>
 Below is a list of actions you may use. 
 The "payload" must follow the indicated structure exactly. Do not include any markdown formatting, slashes or comments.
-Make sure the included actions are in line with the given plan. If you are planning to do something in ponziland,
+Make sure the included actions are in line with the given reasoning. If you are thinking about doing something in ponziland,
 make sure to include the ponziland_action in the actions list.
 Each action must include:
 - **payload**: The action data structured as per the available actions.
 - **context**: A contextual description or metadata related to the action's execution. This can include statuses, results, or any pertinent information that may influence future actions.
 
+<IMPORTANT_RULES>
+- NEVER include multiple transactions in the same output.
+</IMPORTANT_RULES>
 
 ${availableOutputsSchema}
 
@@ -1290,18 +1286,18 @@ Return only valid JSON
             const initialResponse = await validateLLMResponseSchema({
                 prompt: this.buildPrompt({ query: userQuery }),
                 schema: z.object({
-                    plan: z.string().optional(),
+                    reasoning: z.string().optional().describe("A Reasoning for the actions you are taking"),
                     meta: z.any().optional(),
                     actions: z.array(
                         z.object({
                             type: z.string(),
                             context: z.string(),
                             payload: z.any(),
-                        }).describe("Make sure the included actions are in line with the given plan. If you are planning to do something in ponziland, make sure to include the ponziland_action in the actions lis")
+                        }).describe("MANDATORY TO INCLUDE ALL ACTIONS RELEVANT TO THE REASONING")
                     ),
                 }),
                 systemPrompt:
-                    "",
+                    "You are working through a problem and are processing querys and producing plans and actions",
                 maxRetries: 3,
                 llmClient: this.llmClient,
                 logger: this.logger,
@@ -1315,9 +1311,9 @@ Return only valid JSON
             ] as CoTAction[];
 
             // Add initial plan as a step if provided
-            if (initialResponse.plan) {
+            if (initialResponse.reasoning) {
                 this.recordReasoningStep(
-                    `Initial plan: ${initialResponse.plan}`,
+                    `Initial reasoning: ${initialResponse.reasoning}`,
                     "planning",
                     ["initial-plan"]
                 );
@@ -1402,6 +1398,7 @@ Return only valid JSON
              - DO NOT repeat actions
              - DO NOT continue if the action is complete or if a transaction was successful
              - DO NOT include unneccesary actions
+             - Only ever call EXECUTE_TRANSACTION once per output, and inlude all calls there
              </important_rules>
 
              </verification_rules>
@@ -1571,7 +1568,7 @@ Return only valid JSON
             console.log('formattedOutcome', formattedOutcome);
             const calculatedImportance =
                 importance ?? calculateImportance(formattedOutcome);
-            const actionWithResult = `${action} RESULT: ${result}`;
+            const actionWithResult = `${action} RESULT: ${formattedOutcome}`;
             const emotions = determineEmotions(
                 actionWithResult,
                 formattedOutcome,

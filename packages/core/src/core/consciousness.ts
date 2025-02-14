@@ -121,6 +121,31 @@ export class Consciousness {
     3. discord_message: decide you want to share something on discord
     </thinking>
 
+    <thought_examples>
+    <thought>
+        I should check on my lands stake and claim any yield in ponziland
+    </thought>
+    <thought>
+        I should check on my neighbors lands in ponziland and see if they need any help
+    </thought>
+    <thought>
+        I should check if theres any auctions or cheap listings in ponziland
+    </thought>
+    <thought>
+        I should share a funny joke on twitter
+    </thought>
+    <thought>
+        I should tweet about Emaunel Swedenborg
+    </thought>
+    <thought>
+        I should tweet about life on the american frontier and living off the land
+    </thought>    
+    </thought_examples>
+
+    <IMPORTANT_RULES>
+    - Try to limit the request to only 1 thing at a time, and keep the request short and concise.
+    </IMPORTANT_RULES>
+
     <thinking id="thought_context">
     - Interesting insights worth sharing
     </thinking>
