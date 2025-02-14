@@ -1236,7 +1236,7 @@ Each action must include:
 - If you are returning no actions because none are neccesary for the query, then make sure your reasoning includes a sufficient and detailed response to the query.
 - If you are returning no actions because the answer to the query is in the current context, then make sure you include a detailed response to the query
 </IMPORTANT_RULES>
-
+ONLY FETCH AUCTIONS WHEN YOU ARE SPECIFICALLY ASKED TO CHECK AUCTIONS. DO NOT DO IT TO TRY AND CHECK A PRICE OF A LAND
 ${availableOutputsSchema}
 
 </AVAILABLE_ACTIONS>
@@ -1422,10 +1422,33 @@ Return only valid JSON
                 ${balances}
              </balances>
 
+             <IMPORTANT_RULES>
+             - Remember that bids are denominated in estarks, and buys are for the token the land is listed for.
+             - Remember that there is a bid distinction between bidding and buying, and you should be very clear if you want to bid or buy.
+             - If the user wants to bid on an acution or buy a land they can't afford, make sure to stop and inform them
+             ONLY FETCH AUCTIONS WHEN YOU ARE SPECIFICALLY ASKED TO CHECK AUCTIONS. DO NOT DO IT TO TRY AND CHECK A PRICE OF A LAND
+             </IMPORTANT_RULES>
+
              <new_actions_info>
                 Remember that address on starknet are shorter than ethereum, so make sure you addresses are exactly what is in the context.
                 Remember that you should return a full summary when opting not to continue with any new actions
+                Even if all requested information is in the previous request, make sure to include all of it in the summary.
+                For example, if you see a successful fetch request you should included all data fetched in the summary.
+                IMPORTANT: MAKE SURE ALL CONTRACT ADDRESSES ARE CORRECT AND ALL TOKEN VALUES ARE ON THE SCALE OF 10^18
              </new_actions_info>
+
+             <token_addresses>
+                ponzilandAddress = '0x1f058fe3a5a82cc12c1e38444d3f9f3fd3511ef4c95851a3d4e07ad195e0af6';
+                estarkAddress = '0x71de745c1ae996cfd39fb292b4342b7c086622e3ecf3a5692bd623060ff3fa0';
+                ebrotherAddress = '0x7031b4db035ffe8872034a97c60abd4e212528416f97462b1742e1f6cf82afe';
+                elordsAddress = '0x4230d6e1203e0d26080eb1cf24d1a3708b8fc085a7e0a4b403f8cc4ec5f7b7b';
+                epaperAddress = '0x335e87d03baaea788b8735ea0eac49406684081bb669535bb7074f9d3f66825'
+             </token_addresses>
+
+             Remember to approve the correct amount considering the bid/buy amount and the stake ammount
+             If a transaction fails because of an approval error, then try the transaction again with the correct approval amount
+            Make sure to approve the correct contracts, as the stake amount for bids and buys will not neccesarily be estark
+             Only try to claim a few lands at a time, and make sure the locations are correct
             
                `;
 
@@ -1550,6 +1573,9 @@ Return only valid JSON
     4. Use neutral, factual language
     5. Don't include technical details unless crucial
     6. Make it human-readable
+    Remember that bids and buys are different, with bids being for auctions and buys being for neighboring lands.
+    DO NOT summarize a bid as a buy, or a buy as a bid.
+    DO NOT convert and values between hex and decimal, use the values as is.
     
     # Rules for output
     Return only the summary text, no additional formatting.

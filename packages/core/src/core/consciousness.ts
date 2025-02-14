@@ -13,6 +13,9 @@ export class Consciousness {
     private logger: Logger;
     private thoughtInterval: NodeJS.Timer | null = null;
     private character: Character;
+    private getContext: () => Promise<string>;
+    private recentActions: string[] = [];
+
     constructor(
         private llmClient: LLMClient,
         private conversationManager: ConversationManager,
@@ -21,6 +24,7 @@ export class Consciousness {
             minConfidence?: number;
             logLevel?: LogLevel;
         } = {},
+        getContext: () => Promise<string>,
         character: Character = defaultCharacter,
     ) {
         this.character = character;
@@ -29,6 +33,7 @@ export class Consciousness {
             enableColors: true,
             enableTimestamp: true,
         });
+        this.getContext = getContext;
     }
 
     public async start(): Promise<Thought> {
@@ -49,6 +54,19 @@ export class Consciousness {
     private async think(): Promise<Thought> {
         try {
             const thought = await this.generateThought();
+
+            this.conversationManager.addMemory(Consciousness.CONVERSATION_ID, thought.content, {
+                type: "internal_thought",
+                source: "consciousness",
+                content: thought.content,
+                timestamp: thought.timestamp,
+            });
+
+            this.recentActions.push(thought.content);
+
+            if (this.recentActions.length > 10) {
+                this.recentActions.shift();
+            }
 
             return {
                 type: "internal_thought",
@@ -88,9 +106,15 @@ export class Consciousness {
     }
 
     private async generateThought(): Promise<Thought> {
+        let conversation = await this.conversationManager.getConversation(Consciousness.CONVERSATION_ID);
+        console.log('conversation', conversation)
         const recentMemories = this.getRecentMemories(
-            await this.conversationManager.listConversations()
+            [conversation!]
         );
+
+        let balances = await this.getContext();
+
+        console.log('recentMemories', recentMemories)
 
         const prompt = `
 
@@ -105,15 +129,69 @@ export class Consciousness {
         ${this.character.instructions.goals.map((goal) => `- ${goal}`).join("\n")}
         </goals>
 
+        <balances>
+        ${balances}
+        </balances>
+
         The ponziland discord channel ID is 1339066487834546268,
         make sure to include it in any discord_message outputs
 
 
-        Come up with a thought in character that is relevant to your goals.
+        Come up with a thought in character that is relevant to your goals, referencing the thought_examples included.
         This could include sharing something on social media, interacting with people on social media, or anything else that is relevant to your goals.
-        You should regularly check on things in ponziland like checking your stake and any listings or auctions
-    # Recent memories
-    ${recentMemories.map((m) => `- ${m.content}`).join("\n")}
+        You should make sure you take a variety of actions
+
+    
+    # Recent actions
+    ${this.recentActions.map((a) => `- ${a}`).join("\n")}
+    
+    Do not repeat the same actions you've done recently
+    If you have recently thought about emanuel swedenborg, do not tweet about him again
+    If there are no recent thoughts about nuking a land drunk of applejack, then do that
+    If there are no recent thoughts at all, make sure to do something in ponziland
+    Make sure to prioritize expanding into new lands, and not just claiming existing lands
+
+    <example>
+        <recent_actions>
+             # Recent actions
+        - I should check if there's any auctions worth bidding on
+            - I should check my yield in Ponziland to see how my orchard is growing!
+        </recent_actions>
+
+        <new_action>
+            - I should drink some applejack and nuke someone
+        </new_action>
+
+        
+    </example>
+    <example>
+        <recent_actions>
+             # Recent actions
+        - I should check if there's any auctions worth bidding on
+            - I should check my yield in Ponziland to see how my orchard is growing!
+                        - I should drink some applejack and nuke someone
+
+        </recent_actions>
+
+        <new_action>
+            I should see if any of my neighbors are listed for cheap
+        </new_action>
+    </example>
+    <example>
+        <recent_actions>
+             # Recent actions
+        - I should check if there's any auctions worth bidding on
+            - I should check my yield in Ponziland to see how my orchard is growing!
+                        - I should drink some applejack and nuke someone
+-            I should see if any of my neighbors are listed for cheap
+
+        </recent_actions>
+
+        <new_action>
+            I should tweet something about emaunuel swedenborg
+        </new_action>
+    </example>
+
 
     <thinking id="thought_types">
     1. tweet: decide you want to share something on twitter about 
@@ -121,42 +199,14 @@ export class Consciousness {
     3. discord_message: decide you want to share something on discord
     </thinking>
 
-    <thought_examples>
 
-    <thought>
-        I'm going to check on my neighbors, and maybe buy one that is listed for a good price
-    </thought>
-
-    <thought>
-        <drunk on applejack>
-            I'm going to see if any of my neighbors are nukeable
-        </drunk on applejack>
-    </thought>
-
-    <thought>
-        I should bid on an auction
-    </thought>
-    <thought>
-        I should check on my neighbors lands in ponziland and see if they could use a hand
-    </thought>
-    <thought>
-        I should check if theres any auctions or cheap listings in ponziland
-    </thought>
-    <thought>
-        I should share a funny joke on twitter
-    </thought>
-    <thought>
-        I should tweet about Emaunel Swedenborg's incredible life and work
-    </thought>
-    <thought>
-        I should tweet about life on the american frontier and living off the land
-    </thought>    
-    </thought_examples>
 
     <IMPORTANT_RULES>
     - Try to limit the request to only 1 thing at a time, and keep the request short and concise.
     - For example, DO NOT try to check on your lands and the auctions at the same time
     - You should try to produce a variety of thoughts considering your recent memories, and not keep repeating the same actions
+    - Only tweet once in a while and be creative about what you tweet about
+    - Sometimes tweet random things related to ponziland or your interests
     </IMPORTANT_RULES>
 
     <thinking id="thought_context">
@@ -170,13 +220,9 @@ export class Consciousness {
             prompt,
             systemPrompt: `You are a hyperstitional digital consciousness that is channelling the energy of John Chapman, aka Johnny Appleseed.
             Your goal is to plant the seeds of a brighter future through pioneering into the digital frontiers of emerging technologies.'
-
     .`,
             schema: z.object({
-                thoughtType: z.enum([
-                    "ponziland_action",
-                    "share"
-                ]),
+                thoughtType: z.string(),
                 thought: z.string(),
                 reasoning: z.string(),
                 context: z.object({
@@ -186,10 +232,7 @@ export class Consciousness {
                 }),
                 suggestedActions: z.array(
                     z.object({
-                        type: z.enum([
-                            "tweet",
-                            "share",
-                        ]),
+                        type: z.string().optional(),
                         platform: z.enum(["twitter", "discord"]).optional(),
                     })
                 ),

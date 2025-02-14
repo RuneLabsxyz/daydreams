@@ -133,7 +133,6 @@ export class MessageProcessor extends BaseProcessor {
         ${JSON.stringify(this.character.templates?.tweetTemplate)}
         </thinking>
 `;
-        console.log(prompt);
         try {
             const result = await validateLLMResponseSchema({
                 prompt,

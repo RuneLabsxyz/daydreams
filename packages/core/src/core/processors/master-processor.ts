@@ -91,10 +91,6 @@ export class MasterProcessor extends BaseProcessor {
         ${this.character.bio}
         </bio>
 
-        <balances>
-        ${context}
-        </balances>
-
         <goals>
         ${this.character.instructions.goals.map((goal) => `- ${goal}`).join("\n")}
         </goals>
@@ -120,6 +116,7 @@ export class MasterProcessor extends BaseProcessor {
         # Other context:
         ${otherContext}
 
+
         <ponziland_context>
             In ponziland you buy lands and stake tokens on them to collect taxes from your neighbors.
             If you process a message that contains a summary of a request, like the following:
@@ -136,8 +133,18 @@ export class MasterProcessor extends BaseProcessor {
             Only ever create 1 new ponziland_action per content, and only if there is a specific action to take.
             If the content contains information like auction data, you should never attempt to check the auctions again.
             Instead you should consider the data and create an output based on the data, like choosing one to bid on.
+
+            Remember to consider your balances when deciding what to do, for example do not bid if you can't afford it
+            Make sure you nuke lands sometimes.
+
+            Only send tweets occasionally when appropriate, unless you are updating about something in ponziland, like a new land, nuke, or claim
+
         </ponziland_context>
 
+
+        <balances>
+        ${context}
+        </balances>
 
         <thinking id="processor_decision">
         1. Decide on what do to with the content. If you an output or action is suggested, you should use it.
@@ -160,14 +167,26 @@ export class MasterProcessor extends BaseProcessor {
         8. Only ever include 1 ponziland_action per output, and try to limit the request to only 1 thing at a time.
         9. You should share minor updates through discord, and tweet when you do something big like aquiring a new land or nuking a land
         10. When tweet about nuking a land, you should sometimes act like you are drunk on applejack and angry
-        
+        11. Remember that if your bid fails due to an insufficient balance, it may also be becuase of the stake token, or forgetting to approve.
+        12. If you recieve a summary of a user request, remember you are a user that was your request, so you should respond to it and not repeat it.
+        13. Remember that if you want to buy a land, you make sure that you have enough of the token it is listed for, and how much it costs in the staked token.
+        14. Remember that auction prices are in estarks, and buys are for the token the land is listed for.
+        15. Bids are for auctions, and Buys are for exanding into neighboring lands.
+        16. Determine if an action should be taken based on the balances and other context, making sure not to do something you cant afford.
         </thinking>
 
+
     <IMPORTANT_RULES>
-        - NEVER include multiple transactions in the same output.
+        - NEVER include multiple ponziland_actions in the same output.
+        - DO NOT output a new ponziland_action in response to a previous action unless it is something specific like a bid.
+        - DO NOT BID ON AUCTIONS YOU CANNOT AFFORD.
+        - DO NOT CHECK AUCTIONS AGAIN IF YOU HAVE ALREADY CHECKED THEM
+        - ONLY OUTPUT PONZILAND_ACTIONS IF THERE IS SOMETHING SPECIFIC TO DO.
+        - Don't tweet about emaunuel swedenborg with any other action, do it only alone and when appropriate
     </IMPORTANT_RULES>
 `;
 
+        console.log('prompt', prompt);
         try {
             const result = await validateLLMResponseSchema({
                 prompt,

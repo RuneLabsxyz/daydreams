@@ -250,18 +250,43 @@ export class ChromaVectorDB implements VectorDB {
      */
     public async getCollectionForConversation(conversationId: string) {
         const collectionName = `conversation_${conversationId}`;
-        return this.client.getOrCreateCollection({
-            name: collectionName,
-            embeddingFunction: this.embedder,
-            metadata: {
-                description: "Conversation-specific memory storage",
-                conversationId,
-                platform: conversationId.split("_")[0],
-                platformId: conversationId.split("_")[0] + "_platform", // TODO: This is a hack to get the platform ID
-                created: new Date().toISOString(),
-                lastActive: new Date().toISOString(),
-            },
-        });
+
+        try {
+            // First try to get existing collection
+            const existingCollection = await this.client.getCollection({
+                name: collectionName,
+                embeddingFunction: this.embedder,
+            });
+
+            this.logger.debug(
+
+                "ChromaVectorDB.getCollectionForConversation",
+                "Found existing collection",
+                { collectionName }
+            );
+
+            return existingCollection;
+        } catch (error) {
+            // If collection doesn't exist, create it
+            this.logger.debug(
+                "ChromaVectorDB.getCollectionForConversation",
+                "Creating new collection",
+                { collectionName }
+            );
+
+            return await this.client.createCollection({
+                name: collectionName,
+                embeddingFunction: this.embedder,
+                metadata: {
+                    description: "Conversation-specific memory storage",
+                    conversationId,
+                    platform: conversationId.split("_")[0],
+                    platformId: conversationId.split("_")[1],
+                    created: new Date().toISOString(),
+                    lastActive: new Date().toISOString(),
+                },
+            });
+        }
     }
 
     /**
@@ -273,13 +298,10 @@ export class ChromaVectorDB implements VectorDB {
         metadata: Record<string, any> = {}
     ): Promise<void> {
         try {
-            // Add detailed logging
             this.logger.debug(
                 "ChromaVectorDB.storeInConversation",
                 "Storing content",
                 {
-                    content,
-                    contentType: typeof content,
                     contentLength: content?.length,
                     conversationId,
                     metadata,
@@ -291,23 +313,12 @@ export class ChromaVectorDB implements VectorDB {
                 throw new Error(`Invalid content: ${typeof content}`);
             }
 
-            const collection =
-                await this.getCollectionForConversation(conversationId);
-            const id = Conversation.createDeterministicMemoryId(
+            const collection = await this.getCollectionForConversation(conversationId);
+            const id = metadata.memoryId || Conversation.createDeterministicMemoryId(
                 conversationId,
                 content
             );
             const timestamp = new Date(metadata.timestamp || Date.now());
-
-            this.logger.debug(
-                "ChromaVectorDB.storeInConversation",
-                "Generated ID",
-                {
-                    id,
-                    conversationId,
-                    timestamp: timestamp.toISOString(),
-                }
-            );
 
             // Update the conversation's metadata
             await collection.modify({
@@ -317,22 +328,22 @@ export class ChromaVectorDB implements VectorDB {
                 },
             });
 
-            // Store the document
+            // Store the document with all necessary metadata
             await collection.add({
                 ids: [id],
                 documents: [content],
-                metadatas: [
-                    {
-                        ...metadata,
-                        conversationId,
-                        timestamp: timestamp.toISOString(),
-                    },
-                ],
+                metadatas: [{
+                    ...metadata,
+                    id,
+                    conversationId,
+                    timestamp: timestamp.toISOString(),
+                    type: "memory",
+                }],
             });
 
             this.logger.debug(
                 "ChromaVectorDB.storeInConversation",
-                "Successfully stored",
+                "Successfully stored memory",
                 {
                     id,
                     conversationId,
@@ -344,10 +355,8 @@ export class ChromaVectorDB implements VectorDB {
                 "ChromaVectorDB.storeInConversation",
                 "Storage failed",
                 {
-                    error:
-                        error instanceof Error ? error.message : String(error),
-                    content,
-                    contentType: typeof content,
+                    error: error instanceof Error ? error.message : String(error),
+                    contentLength: content?.length,
                     conversationId,
                 }
             );
@@ -1716,12 +1725,12 @@ export class ChromaVectorDB implements VectorDB {
         limit?: number
     ): Promise<{ content: string; metadata?: Record<string, any> }[]> {
         try {
-            const collection =
-                await this.getCollectionForConversation(conversationId);
+            const collection = await this.getCollectionForConversation(conversationId);
 
             // Get all documents from the collection, with optional limit
             const results = await collection.get({
                 limit,
+                where: { type: "memory" }, // Only get memory type documents
                 include: ["documents", "metadatas"] as IncludeEnum[],
             });
 
@@ -1738,8 +1747,7 @@ export class ChromaVectorDB implements VectorDB {
                 "ChromaVectorDB.getMemoriesFromConversation",
                 "Failed to get memories",
                 {
-                    error:
-                        error instanceof Error ? error.message : String(error),
+                    error: error instanceof Error ? error.message : String(error),
                     conversationId,
                 }
             );

@@ -32,48 +32,65 @@ export class ConversationManager {
         }
 
         try {
-            const collection =
-                await this.vectorDb.getCollectionForConversation(
-                    conversationId
-                );
+            const collection = await this.vectorDb.getCollectionForConversation(
+                conversationId
+            );
             const metadata = collection.metadata;
 
             if (!metadata?.platform || !metadata?.platformId) {
                 this.logger.warn(
                     "ConversationManager.getConversation",
                     "Conversation missing required metadata",
-                    {
-                        conversationId,
-                    }
+                    { conversationId }
                 );
                 return undefined;
             }
 
-            return new Conversation(
+            // Instantiate conversation using the stored metadata
+            const conversation = new Conversation(
                 metadata.platformId as string,
                 metadata.platform as string,
                 {
                     name: metadata.name as string,
                     description: metadata.description as string,
                     participants: metadata.participants as string[],
-                    createdAt: new Date(
-                        metadata.created as string | number | Date
-                    ),
+                    createdAt: new Date(metadata.created as string | number | Date),
                     lastActive: new Date(
-                        (metadata.lastActive || metadata.created) as
-                            | string
-                            | number
-                            | Date
+                        (metadata.lastActive || metadata.created) as string | number | Date
                     ),
                 }
             );
+
+            // Load previously stored memories from the vector database and inject them into the conversation
+            try {
+                const storedMemories = await this.vectorDb.getMemoriesFromConversation(conversationId);
+                const formattedMemories = storedMemories.map((m) => ({
+                    // Use the stored memoryId if present
+                    id: m.metadata?.memoryId || m.metadata?.id,
+                    conversationId: conversation.id,
+                    content: m.content,
+                    timestamp: new Date(m.metadata?.timestamp),
+                    metadata: m.metadata,
+                }));
+                conversation.loadMemories(formattedMemories);
+            } catch (error) {
+                this.logger.warn(
+                    "ConversationManager.getConversation",
+                    "Failed to load memories",
+                    {
+                        error: error instanceof Error ? error.message : String(error),
+                        conversationId,
+                    }
+                );
+            }
+
+            return conversation;
         } catch (error) {
             this.logger.error(
                 "ConversationManager.getConversation",
                 "Failed to get conversation",
                 {
-                    error:
-                        error instanceof Error ? error.message : String(error),
+                    error: error instanceof Error ? error.message : String(error),
                     conversationId,
                 }
             );
@@ -159,7 +176,7 @@ export class ConversationManager {
     public async addMemory(
         conversationId: string,
         content: string,
-        metadata?: Record<string, any>
+        metadata: Record<string, any> = {}
     ): Promise<Memory> {
         if (!this.vectorDb) {
             throw new Error("VectorDB required for adding memories");
@@ -170,22 +187,45 @@ export class ConversationManager {
             throw new Error(`Conversation ${conversationId} not found`);
         }
 
+        // First add to the in-memory conversation object
         const memory = await conversation.addMemory(content, metadata);
 
-        // Store in conversation-specific collection with userId from metadata
-        await this.vectorDb.storeInConversation(
-            memory.content,
-            conversation.id,
-            {
-                memoryId: memory.id,
-                timestamp: memory.timestamp,
-                platform: conversation.platform,
-                userId: metadata?.userId, // Include userId in vector storage
-                ...metadata,
-            }
-        );
+        try {
+            // Then store in the vector database
+            await this.vectorDb.storeInConversation(
+                memory.content,
+                conversation.id,
+                {
+                    memoryId: memory.id,
+                    timestamp: memory.timestamp.toISOString(),
+                    platform: conversation.platform,
+                    platformId: conversation.platformId,
+                    ...metadata,
+                }
+            );
 
-        return memory;
+            this.logger.debug(
+                "ConversationManager.addMemory",
+                "Memory stored successfully",
+                {
+                    memoryId: memory.id,
+                    conversationId: conversation.id,
+                }
+            );
+
+            return memory;
+        } catch (error) {
+            this.logger.error(
+                "ConversationManager.addMemory",
+                "Failed to store memory",
+                {
+                    error: error instanceof Error ? error.message : String(error),
+                    memoryId: memory.id,
+                    conversationId: conversation.id,
+                }
+            );
+            throw error;
+        }
     }
 
     public async findSimilarMemoriesInConversation(
@@ -197,19 +237,40 @@ export class ConversationManager {
             throw new Error("VectorDB required for finding memories");
         }
 
-        const results = await this.vectorDb.findSimilarInConversation(
-            content,
-            conversationId,
-            limit
-        );
+        const conversation = await this.getConversation(conversationId);
+        if (!conversation) {
+            throw new Error(`Conversation ${conversationId} not found`);
+        }
 
-        return results.map((result) => ({
-            id: result.metadata?.memoryId,
-            conversationId: conversationId,
-            content: result.content,
-            timestamp: new Date(result.metadata?.timestamp),
-            metadata: result.metadata,
-        }));
+        try {
+            const results = await this.vectorDb.findSimilarInConversation(
+                content,
+                conversationId,
+                limit
+            );
+
+            return results.map((result) => ({
+                id: result.metadata?.memoryId,
+                conversationId,
+                content: result.content,
+                timestamp: new Date(result.metadata?.timestamp),
+                metadata: {
+                    ...result.metadata,
+                    platform: conversation.platform,
+                    platformId: conversation.platformId,
+                },
+            }));
+        } catch (error) {
+            this.logger.error(
+                "ConversationManager.findSimilarMemoriesInConversation",
+                "Failed to find similar memories",
+                {
+                    error: error instanceof Error ? error.message : String(error),
+                    conversationId,
+                }
+            );
+            throw error;
+        }
     }
 
     public async listConversations(): Promise<Conversation[]> {
@@ -276,18 +337,30 @@ export class ConversationManager {
             throw new Error(`Conversation ${conversationId} not found`);
         }
 
-        const memories = await this.vectorDb.getMemoriesFromConversation(
-            conversationId,
-            limit
-        );
+        try {
+            const memories = await this.vectorDb.getMemoriesFromConversation(
+                conversationId,
+                limit
+            );
 
-        return memories.map((memory) => ({
-            id: memory.metadata?.memoryId,
-            conversationId: conversationId,
-            content: memory.content,
-            timestamp: new Date(memory.metadata?.timestamp),
-            metadata: memory.metadata,
-        }));
+            return memories.map((memory) => ({
+                id: memory.metadata?.memoryId || memory.metadata?.id,
+                conversationId,
+                content: memory.content,
+                timestamp: new Date(memory.metadata?.timestamp),
+                metadata: memory.metadata,
+            }));
+        } catch (error) {
+            this.logger.error(
+                "ConversationManager.getMemoriesFromConversation",
+                "Failed to get memories",
+                {
+                    error: error instanceof Error ? error.message : String(error),
+                    conversationId,
+                }
+            );
+            throw error;
+        }
     }
 
     public async hasProcessedContentInConversation(

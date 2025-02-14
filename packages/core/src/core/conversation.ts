@@ -78,6 +78,8 @@ export class Conversation {
             metadata,
         };
 
+        console.log('memory', memory)
+
         this.memories.push(memory);
         this.metadata.lastActive = new Date();
 
@@ -129,6 +131,15 @@ export class Conversation {
             ...update,
             lastActive: new Date(),
         };
+    }
+
+    /**
+     * Loads an array of Memory objects into the conversation.
+     * This is used to rehydrate an instance with memories persisted in the vector DB.
+     * @param memories - Array of Memory objects retrieved from persistence.
+     */
+    public loadMemories(memories: Memory[]): void {
+        this.memories = memories;
     }
 
     /**
