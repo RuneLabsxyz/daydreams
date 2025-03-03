@@ -100,6 +100,7 @@ export const runGenerate = task(
       logger,
       model,
       contextId,
+      character,
     }: {
       agent: AnyAgent;
       contexts: ContextState<AnyContext>[];
@@ -109,6 +110,7 @@ export const runGenerate = task(
       actions: AnyAction[];
       logger: Logger;
       model: LanguageModelV1;
+      character: string;
     },
     { callId, debug }: TaskContext
   ) => {
@@ -124,6 +126,7 @@ export const runGenerate = task(
       context: formatContexts(contextId, contexts, workingMemory),
       outputs,
       actions,
+      character: character,
       updates: formatContext({
         type: mainContext.context.type,
         key: mainContext.key,
@@ -230,6 +233,9 @@ export const runGenerateResults = task(
     },
     { callId, debug }: TaskContext
   ) => {
+
+    console.log('runGenerateResults context',  formatContexts(contextId, contexts, workingMemory))
+    
     debug(
       contextId,
       ["workingMemory", callId],
@@ -237,6 +243,18 @@ export const runGenerateResults = task(
     );
 
     const mainContext = contexts.find((ctx) => ctx.id === contextId)!;
+
+    console.log('runGenerateResults mainContext', mainContext)
+
+    console.log('runGenerateResults updates', formatContext({
+      type: mainContext.context.type,
+      key: mainContext.key,
+      content: defaultContextRender({
+        memory: {
+          inputs: workingMemory.inputs.filter((i) => i.processed !== true),
+        },
+      }),
+    }))
 
     const system = resultsPrompt({
       context: formatContexts(contextId, contexts, workingMemory),

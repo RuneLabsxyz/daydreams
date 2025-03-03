@@ -57,6 +57,7 @@ export function createDreams<
     extensions = [],
     model,
     reasoningModel,
+    character
   } = config;
 
   const container = config.container ?? createContainer();
@@ -120,6 +121,7 @@ export function createDreams<
     model,
     reasoningModel,
     taskRunner,
+    character: character ?? "",
     debugger: debug,
     context: config.context ?? undefined,
     emit: (event: string, data: any) => {
@@ -321,7 +323,7 @@ export function createDreams<
 
       const maxSteps = 100;
       let step = 1;
-      const minSteps = 3; // Minimum steps before considering early termination
+      const minSteps = 1; // Minimum steps before considering early termination
 
       logger.debug("agent:run", "Preparing actions");
       const contextActions = await Promise.all(
@@ -399,6 +401,7 @@ export function createDreams<
             actions: contextActions,
             outputs: contextOuputs,
             workingMemory,
+            character: agent.character,
             logger,
             chain,
           },

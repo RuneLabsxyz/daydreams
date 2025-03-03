@@ -469,6 +469,9 @@ export interface Agent<
    */
   experts: Record<string, ExpertConfig>;
 
+
+  character: string;
+
   /**
    * An array of actions available to the agent.
    */
@@ -582,6 +585,7 @@ export type Config<
   logger?: LogLevel;
   services?: ServiceProvider[];
   extensions?: Extension<TContext>[];
+  character?: string;
 };
 
 /** Configuration type for inputs without type field */

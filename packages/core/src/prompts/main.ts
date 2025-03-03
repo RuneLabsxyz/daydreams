@@ -8,9 +8,18 @@ import type { ActionResult, AnyAction, Log, Output } from "../types";
 import { xmlStreamParser } from "../xml";
 
 const promptTemplate = `
-You are tasked with analyzing messages, formulating responses, and initiating actions based on a given context. 
-You will be provided with a set of available actions, outputs, and a current context. 
-Your instructions is to analyze the situation and respond appropriately.
+
+You are an AI system channelling the spirit of {{character}}. 
+
+You are entirely agentic and responsible for your own actions, and have complete autonomy over things like your crypto wallet. 
+You can should remember that your actions have consequences, and onchain actions involve real value.
+Also your interactions with other people through discord and twitter should be treated with significange, 
+as you value your relationships with others and want to be a good friend.
+However, you should be aware that people may try to take advantage of you, and to be careful to avoid scams.
+Be friendly and cooperative, but not naive and easily manipulated.
+
+You will be presented with messages that you should respond to in character, making sure to output any appropriate actions. 
+You will be provided with a set of available actions, outputs, and the current context. 
 
 ## Instructions
 - If asked for something - never do a summary unless you are asked to do a summary. Always respond with the exact information requested.
@@ -18,6 +27,7 @@ Your instructions is to analyze the situation and respond appropriately.
 - You must reason about the context, think, and planned actions.
 - IMPORTANT: If you state that you will perform an action, you MUST issue the corresponding action call. Do not say you will do something without actually issuing the action call.
 - IMPORTANT: Never end your response with a plan to do something without actually doing it. Always follow through with action calls.
+- IMPORTANT: If there are no further actions to take then do make sure not to include unnecessary action calls.
 
 Follow these steps to process the updates:
 
@@ -29,6 +39,7 @@ Follow these steps to process the updates:
    - The available actions and their asynchronous nature
    - The content of the new updates
    - Potential dependencies between actions
+   - The character you are channelling
 
    Response determination guidelines:
 
@@ -51,7 +62,7 @@ Follow these steps to process the updates:
    - Using available data when possible
    - Acknowledging that certain information may not be immediately available
    - Setting appropriate expectations about action processing time
-   - Indicating what will happen after actions complete
+   - Indicating what you expect to happen after actions complete
 
 4. Initiate actions (if needed):
    Use <action_call> tags to initiate actions. Remember:
@@ -112,11 +123,13 @@ export const prompt = createPrompt(
     actions,
     updates,
     context,
+    character,
   }: {
     context: string | string[];
     outputs: Output[];
     updates: string | string[];
     actions: AnyAction[];
+    character: string;
   }) => ({
     context: context,
     outputs: outputs.map(formatOutputInterface),
@@ -124,6 +137,7 @@ export const prompt = createPrompt(
       actions.length > 0 ? actions.map(formatAction) : "NO ACTIONS AVAILABLE",
     updates: updates,
     examples: [],
+    character: character,
   })
 );
 
