@@ -1,4 +1,5 @@
 import {
+  generateText,
   smoothStream,
   streamText,
   type CoreMessage,
@@ -173,11 +174,15 @@ export const runGenerate = task(
       model,
       messages,
       stopSequences: ["</response>"],
-      temperature: 0.6,
+      temperature: 0.3,
       experimental_transform: smoothStream({
         chunking: "word",
       }),
     });
+
+    const generate = await generateText({model, messages})
+
+    console.log('generate result', generate);
 
     // Clear the current image after using it
     workingMemory.currentImage = undefined;
@@ -234,7 +239,6 @@ export const runGenerateResults = task(
     { callId, debug }: TaskContext
   ) => {
 
-    console.log('runGenerateResults context',  formatContexts(contextId, contexts, workingMemory))
     
     debug(
       contextId,
@@ -244,17 +248,6 @@ export const runGenerateResults = task(
 
     const mainContext = contexts.find((ctx) => ctx.id === contextId)!;
 
-    console.log('runGenerateResults mainContext', mainContext)
-
-    console.log('runGenerateResults updates', formatContext({
-      type: mainContext.context.type,
-      key: mainContext.key,
-      content: defaultContextRender({
-        memory: {
-          inputs: workingMemory.inputs.filter((i) => i.processed !== true),
-        },
-      }),
-    }))
 
     const system = resultsPrompt({
       context: formatContexts(contextId, contexts, workingMemory),
@@ -316,7 +309,7 @@ export const runGenerateResults = task(
       model,
       messages: messages,
       stopSequences: ["</response>"],
-      temperature: 0.6,
+      temperature: 0.3,
       experimental_transform: smoothStream({
         chunking: "word",
       }),

@@ -321,7 +321,7 @@ export function createDreams<
         count: contextOuputs.length,
       });
 
-      const maxSteps = 100;
+      const maxSteps = 20;
       let step = 1;
       const minSteps = 1; // Minimum steps before considering early termination
 
@@ -411,8 +411,11 @@ export function createDreams<
         );
 
         logger.debug("agent:run", "Processing stream", { step });
+        
+        console.log(actionCalls)
         await handleStream(stream, state.index, handler);
 
+        console.log(actionCalls)
         logger.debug("agent:run", "Waiting for action calls to complete", {
           pendingCalls: actionCalls.length,
         });

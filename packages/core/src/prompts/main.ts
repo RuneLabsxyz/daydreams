@@ -367,6 +367,7 @@ export async function handleStream(
 
   async function handleChunk(chunk: string) {
     let result = parser.next(chunk);
+    console.log('handling chunk', result);
     while (!result.done && result.value) {
       if (result.value.type === "start") {
         if (current) stack.push(current);
