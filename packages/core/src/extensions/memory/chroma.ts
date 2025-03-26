@@ -97,18 +97,7 @@ export class ChromaVectorStore implements VectorStore {
   async query(contextId: string, query: string): Promise<any[]> {
     console.log(query);
 
-    console.log(this.collection);
-    const results = await this.collection.query({
-      queryTexts: [query],
-      nResults: 5,
-      where: {
-        contextId: contextId,
-      },
-    });
-
-    console.log(results);
-
-    return results.documents[0] || [];
+    return [];
   }
 
   /**
