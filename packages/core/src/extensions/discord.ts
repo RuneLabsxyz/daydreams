@@ -99,9 +99,8 @@ export const discord = extension({
       },
     }),
   },
-
   outputs: {
-    "discord:message": output({
+    "discord:send_message": output({
       schema: z.object({
         channelId: z
           .string()
@@ -125,6 +124,7 @@ export const discord = extension({
         const channel = await container
           .resolve<DiscordClient>("discord")
           .client.channels.fetch(data.channelId);
+        console.log("Sending message to discord", data)
         if (channel && channel.isSendable()) {
           await container.resolve<DiscordClient>("discord").sendMessage(data);
           return {

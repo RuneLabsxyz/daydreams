@@ -29,7 +29,7 @@ export class StarknetChain implements IChain {
   /** Unique identifier for this chain implementation */
   public chainId = "starknet";
   /** RPC provider instance for connecting to Starknet */
-  private provider: RpcProvider;
+  public provider: RpcProvider;
   /** Account instance for transaction signing */
   private account: Account;
 

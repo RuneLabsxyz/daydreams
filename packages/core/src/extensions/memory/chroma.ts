@@ -95,6 +95,9 @@ export class ChromaVectorStore implements VectorStore {
    * @returns Array of matching documents
    */
   async query(contextId: string, query: string): Promise<any[]> {
+    console.log(query);
+
+    console.log(this.collection);
     const results = await this.collection.query({
       queryTexts: [query],
       nResults: 5,
@@ -102,6 +105,8 @@ export class ChromaVectorStore implements VectorStore {
         contextId: contextId,
       },
     });
+
+    console.log(results);
 
     return results.documents[0] || [];
   }

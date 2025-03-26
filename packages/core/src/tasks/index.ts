@@ -180,9 +180,9 @@ export const runGenerate = task(
       }),
     });
 
-    const generate = await generateText({model, messages})
+  //  const generate = await generateText({model, messages})
 
-    console.log('generate result', generate);
+  //  console.log('generate result', generate.text);
 
     // Clear the current image after using it
     workingMemory.currentImage = undefined;
