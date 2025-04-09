@@ -84,6 +84,7 @@ export function createDreams<TContext extends AnyContext = AnyContext>(
     reasoningModel,
     exportTrainingData,
     trainingDataPath,
+    streaming = true,
   } = config;
 
   const container = config.container ?? createContainer();

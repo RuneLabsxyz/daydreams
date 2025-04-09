@@ -68,6 +68,8 @@ Follow these steps to process the updates:
    - Indicating what will happen after actions complete
    - You can only use outputs listed in the <available_outputs> section
    - Follow the schemas provided for each output
+   - Make sure any JSON is valid with no unneccesary slashes or newline characters
+   - Remember that tweets are outputs, not actions
   
 4. Initiate actions (if needed):
    Use <action_call> tags to initiate actions. Remember:

@@ -224,6 +224,7 @@ export async function handleOutput({
       if (typeof parsedContent === "string") {
         if (schema._def.typeName !== "ZodString") {
           parsedContent = JSON.parse(parsedContent.trim());
+          console.log('parsedContent', parsedContent)
         }
       }
 

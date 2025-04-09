@@ -113,13 +113,8 @@ export const runGenerate = task(
 
     const messages: CoreMessage[] = [
       {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: prompt,
-          },
-        ],
+        role: "system",
+        content: prompt,
       },
     ];
 
@@ -150,39 +145,41 @@ export const runGenerate = task(
         temperature: 0.3,
         abortSignal,
       });
-      console.log({ response });
+      console.log("generated text", response.text);
 
       let getTextResponse = async () => response.text;
       let stream = textToStream(response.text);
 
       return { getTextResponse, stream };
     }
+    else {
 
-    const stream = streamText({
-      model,
-      messages,
-      stopSequences: ["\n</response>"],
-      temperature: 0.1,
-      abortSignal,
-        // experimental_transform: smoothStream({
-        //   chunking: "word",
-        // }),
-      onError: (event) => {
-          console.log({ event });
-        onError(event.error);
-      },
-    }) 
-    
+      const stream = streamText({
+        model,
+        messages,
+        stopSequences: ["\n</response>"],
+        temperature: 0.5,
+        abortSignal,
+          // experimental_transform: smoothStream({
+          //   chunking: "word",
+          // }),
+        onError: (event) => {
+            console.log({ event });
+          onError(event.error);
+        },
+      }) 
+      
 
-    return prepareStreamResponse({
-      model,
-      stream,
-      isReasoningModel,
-    });
-    } catch (error) {
-      console.log({ error });
-      throw error;
-    }
+      return prepareStreamResponse({
+        model,
+        stream,
+        isReasoningModel,
+      });
+  }
+  } catch (error) {
+    console.log({ error });
+    throw error;
+  }
   }
 );
 
