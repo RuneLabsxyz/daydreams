@@ -1,6 +1,7 @@
 import {
   smoothStream,
   streamText,
+  generateText,
   type CoreMessage,
   type LanguageModelV1,
   type StreamTextResult,
@@ -99,12 +100,13 @@ type GenerateOptions = {
   model: LanguageModelV1;
   onError: (error: unknown) => void;
   abortSignal?: AbortSignal;
+  streaming?: boolean;
 };
 
 export const runGenerate = task(
   "agent:run:generate",
   async (
-    { prompt, workingMemory, model, onError, abortSignal }: GenerateOptions,
+    { prompt, workingMemory, model, onError, abortSignal, streaming }: GenerateOptions,
     { callId, debug }
   ) => {
     const isReasoningModel = reasoningModels.includes(model.modelId);
@@ -140,11 +142,27 @@ export const runGenerate = task(
     }
 
     try {
+
+    if (!streaming) {
+      const response = await generateText({
+        model,
+        messages,
+        temperature: 0.3,
+        abortSignal,
+      });
+      console.log({ response });
+
+      let getTextResponse = async () => response.text;
+      let stream = textToStream(response.text);
+
+      return { getTextResponse, stream };
+    }
+
     const stream = streamText({
       model,
       messages,
       stopSequences: ["\n</response>"],
-      temperature: 0.6,
+      temperature: 0.1,
       abortSignal,
         // experimental_transform: smoothStream({
         //   chunking: "word",
@@ -153,7 +171,8 @@ export const runGenerate = task(
           console.log({ event });
         onError(event.error);
       },
-    });
+    }) 
+    
 
     return prepareStreamResponse({
       model,
@@ -166,6 +185,15 @@ export const runGenerate = task(
     }
   }
 );
+
+async function* textToStream(text: string, chunkSize = 10): AsyncGenerator<string> {
+  for (let i = 0; i < text.length; i += chunkSize) {
+    const chunk = text.slice(i, i + chunkSize);
+    yield chunk;
+    // Optional: add a small delay to simulate streaming
+    // await new Promise(resolve => setTimeout(resolve, 10));
+  }
+}
 
 /**
  * Task that executes an action with the given context and parameters.

@@ -37,6 +37,7 @@ import { LogLevel } from "./types";
 import { randomUUIDv7, tryAsync } from "./utils";
 import { createContextStreamHandler, handleStream } from "./streaming";
 import { mainStep, promptTemplate } from "./prompts/main";
+import { sleep } from "bun";
 
 type RunState = ReturnType<typeof createContextStreamHandler>;
 
@@ -564,6 +565,8 @@ export function createDreams<TContext extends AnyContext = AnyContext>(
         });
 
         try {
+
+          sleep(100)
           if (state.step > 1) {
             stepRef = await state.nextStep();
           }
@@ -600,6 +603,7 @@ export function createDreams<TContext extends AnyContext = AnyContext>(
                 streamError = error;
                 state.errors.push(error);
               },
+              streaming: false,
             },
             {
               debug: agent.debugger,
@@ -611,7 +615,7 @@ export function createDreams<TContext extends AnyContext = AnyContext>(
 
           await handleStream(stream, state.index, tags, handler, {});
 
-          if (streamError) {
+          if (streamError) { 
             throw streamError;
           }
 
