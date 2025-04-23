@@ -84,7 +84,7 @@ export function createDreams<TContext extends AnyContext = AnyContext>(
     reasoningModel,
     exportTrainingData,
     trainingDataPath,
-    streaming = true,
+    streaming = true
   } = config;
 
   const container = config.container ?? createContainer();
@@ -467,7 +467,11 @@ export function createDreams<TContext extends AnyContext = AnyContext>(
 
     async run(params) {
       const { context, args, outputs, handlers, abortSignal } = params;
-      console.log(params.chain);
+
+      console.log('params', params)
+
+      console.log('params.input', params.input)
+
       if (!booted) {
         logger.error("agent:run", "Agent not booted");
         throw new Error("Not booted");
@@ -537,7 +541,7 @@ export function createDreams<TContext extends AnyContext = AnyContext>(
       let maxSteps = 0;
 
       function getMaxSteps() {
-        return ctxState.settings.maxSteps ?? 5;
+        return 5;
       }
 
       await state.setParams({
@@ -567,7 +571,6 @@ export function createDreams<TContext extends AnyContext = AnyContext>(
 
         try {
 
-          sleep(100)
           if (state.step > 1) {
             stepRef = await state.nextStep();
           }
@@ -576,12 +579,16 @@ export function createDreams<TContext extends AnyContext = AnyContext>(
             contexts: state.contexts,
             actions: state.actions,
             outputs: state.outputs,
+            input: params.input.data.text,
+            inputType: params.input.type,
             workingMemory,
             chainOfThoughtSize: 0,
-            maxWorkingMemorySize: ctxState.settings.maxWorkingMemorySize,
+            maxWorkingMemorySize: ctxState.settings.maxWorkingMemorySize
           });
 
           const prompt = stepConfig.render(promptData);
+
+          console.log('prompt', prompt)
 
           stepRef.data.prompt = prompt;
 

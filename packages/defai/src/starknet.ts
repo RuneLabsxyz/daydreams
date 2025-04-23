@@ -1,4 +1,4 @@
-import { RpcProvider, Account, type Call, CallData } from "starknet";
+import { RpcProvider, Account, type Call, CallData, RPC, num } from "starknet";
 import type { IChain } from "@daydreamsai/core";
 
 /**
@@ -42,7 +42,10 @@ export class StarknetChain implements IChain {
     this.account = new Account(
       this.provider,
       config.address,
-      config.privateKey
+      config.privateKey,
+      undefined,
+      "0x3"
+
     );
   }
 
@@ -70,9 +73,29 @@ export class StarknetChain implements IChain {
    * @throws Error if the transaction fails
    */
   public async write(call: Call): Promise<any> {
+    const maxQtyGasAuthorized = 1800n; // max quantity of gas authorized
+    const maxPriceAuthorizeForOneGas = 20n * 10n ** 15n; // max price for one gas
+
     try {
       call.calldata = CallData.compile(call.calldata || []);
-      const { transaction_hash } = await this.account.execute(call);
+      const { transaction_hash } = await this.account.execute(call, {
+        version: 3,
+        maxFee: 10 ** 19,
+        feeDataAvailabilityMode: RPC.EDataAvailabilityMode.L1,
+        tip: 10 ** 18,
+        paymasterData: [],
+        resourceBounds: {
+          l1_gas: {
+            max_amount: num.toHex(maxQtyGasAuthorized),
+            max_price_per_unit: num.toHex(maxPriceAuthorizeForOneGas),
+          },
+          l2_gas: {
+            max_amount: num.toHex(0),
+            max_price_per_unit: num.toHex(0),
+          },
+        },
+      });
+      console.log('transaction_hash', transaction_hash)
       return this.account.waitForTransaction(transaction_hash, {
         retryInterval: 1000,
       });

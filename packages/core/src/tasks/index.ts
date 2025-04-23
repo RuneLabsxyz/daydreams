@@ -118,14 +118,6 @@ export const runGenerate = task(
       },
     ];
 
-    if (modelsResponseConfig[model.modelId]?.assist !== false)
-      messages.push({
-        role: "assistant",
-        content: isReasoningModel
-          ? (modelsResponseConfig[model.modelId]?.thinkTag ?? "<think>")
-          : "<response>",
-      });
-
     if (workingMemory.currentImage) {
       messages[0].content = [
         ...messages[0].content,
@@ -142,10 +134,8 @@ export const runGenerate = task(
       const response = await generateText({
         model,
         messages,
-        temperature: 0.3,
-        abortSignal,
+        temperature: 0.2
       });
-      console.log("generated text", response.text);
 
       let getTextResponse = async () => response.text;
       let stream = textToStream(response.text);

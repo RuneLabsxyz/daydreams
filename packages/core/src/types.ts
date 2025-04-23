@@ -870,6 +870,7 @@ export type Config<TContext extends AnyContext = AnyContext> = Partial<
   /** Path to save training data */
   trainingDataPath?: string;
   streaming?: boolean;
+  personality?: string;
 };
 
 /** Configuration type for inputs without type field */

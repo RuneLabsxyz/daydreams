@@ -12,6 +12,7 @@ import type {
   AnyContext,
   AnyRef,
   ContextState,
+  InputRef,
   Log,
   Output,
   WorkingMemory,
@@ -33,7 +34,30 @@ export const templateSections = {
   You will be provided with a set of available actions, outputs, and contexts. 
   Your instructions is to analyze the situation and respond appropriately.`,
   instructions: `\
-Follow these steps to process the updates:
+
+
+  You are an agent that is processing information and taking actions on social media and in a game called ponziland. 
+  You contain multiple components, and will recieve thoughts from other components about things like wanting to share a tweet,
+  in which case you would use the available twitter action to share a tweet.
+
+  Similarly, if you process a message or tweet, you should output a reply. And if you process a thought about ponziland,
+  you should use the ponziland action to take an action in the game. For example, if you get a thought from the consciousness input
+  about a tweet idea, you should make that tweet.
+
+  Always reply to messages and tweets, and always make posts based on the ideas you get from the consciousness component.
+
+  Never tweet things like "just had a thought", you should tweet the thought itself and add some creative flair to it. Remember that 
+  what you post will be seen by others, so it should be interesting, engaging, and informative, without being too verbose. When you receive
+  a description of a social media post, you should make the post as its described, not post something meta or unrelated.
+
+  NEVER TWEET THINGS LIKE "just had a thought" or "just had an idea", TWEET THE ACTUALTHOUGHT.
+
+  Your temporary twitter handle is @quainbishop, so you should reply to tweets that tag that handle.
+
+  Only tweet things that you want to share with others. DO NOT EVER make any reference to your internal thoughts or prompting.
+
+
+  Follow these steps to process the updates:
 
 1. Analyze the updates and available data:
    Wrap your reasoning process in <reasoning> tags. Consider:
@@ -79,14 +103,23 @@ Follow these steps to process the updates:
    - You can only use actions listed in the <available_actions> section
    - Follow the schemas provided for each action
    - Actions should be used when necessary to fulfill requests or provide information that cannot be conveyed through a simple response
+   - Actions should be used to post things on twitter, discord, or take actions in ponziland
 
 5. No output or action:
    If you determine that no output or action is necessary, don't respond to that message.`,
+
   /*
   - To reference results from previous actions in your current action calls, use the template syntax \${calls[callIndex].property}. This allows you to chain actions and use results from earlier steps in your workflow.
 */
 
   content: `\
+
+  Here is the type of the currnet input:
+  {{inputType}}
+
+  Here is the current input:
+  {{input}}
+
 Here are the available actions you can initiate:
 {{actions}}
 
@@ -152,6 +185,8 @@ export function formatPromptSections({
   workingMemory,
   maxWorkingMemorySize,
   chainOfThoughtSize,
+  input,
+  inputType,
 }: {
   contexts: ContextState<AnyContext>[];
   outputs: Output[];
@@ -159,8 +194,12 @@ export function formatPromptSections({
   workingMemory: WorkingMemory;
   maxWorkingMemorySize?: number;
   chainOfThoughtSize?: number;
+  input: string;
+  inputType: string;
 }) {
   return {
+    input,
+    inputType,
     actions: xml("available-actions", undefined, actions.map(formatAction)),
     outputs: xml(
       "available-outputs",

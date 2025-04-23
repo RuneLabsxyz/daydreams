@@ -371,8 +371,6 @@ export function createContextStreamHandler({
 
   async function pushLogStream(log: AnyRef, done: boolean) {
 
-
-    console.log('log', log)
     if (log.ref !== "output" && done) state.chain.push(log);
 
     if (log.ref === "thought" && done) {
