@@ -468,10 +468,6 @@ export function createDreams<TContext extends AnyContext = AnyContext>(
     async run(params) {
       const { context, args, outputs, handlers, abortSignal } = params;
 
-      console.log('params', params)
-
-      console.log('params.input', params.input)
-
       if (!booted) {
         logger.error("agent:run", "Agent not booted");
         throw new Error("Not booted");

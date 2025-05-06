@@ -179,6 +179,7 @@ export function formatAction(action: AnyAction) {
 
 export function formatContextState(state: ContextState) {
   const { context, key } = state;
+  console.log(context, state)
   return xml(
     "context",
     { type: context.type, key: key },
