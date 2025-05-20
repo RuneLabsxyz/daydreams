@@ -57,17 +57,6 @@ Follow these steps to process the updates:
    - How to handle potential action failures
    - What information to provide while actions are processing
 
-3. Formulate a output (if needed):
-   If you decide to respond to the message, use <output> tags to enclose your output.
-   Consider:
-
-   - Using available data when possible
-   - Acknowledging that certain information may not be immediately available
-   - Setting appropriate expectations about action processing time
-   - Indicating what will happen after actions complete
-   - You can only use outputs listed in the <available_outputs> section
-   - Follow the schemas provided for each output
-  
 4. Initiate actions (if needed):
    Use <action_call> tags to initiate actions. Remember:
 

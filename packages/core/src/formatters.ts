@@ -271,7 +271,7 @@ export function formatContextLog(i: Log) {
         i.formatted ?? i.data
       );
     case "event":
-      return xml("event", { name: i.name, ...i.params }, i.formatted ?? i.data);
+      return ;
     default:
       throw new Error("invalid context");
   }

@@ -48,6 +48,7 @@ export class ChromaVectorStore implements VectorStore {
    * @param collectionName - Name of the collection to initialize
    */
   private async initCollection(collectionName: string) {
+
     this.collection = await this.client.getOrCreateCollection({
       name: collectionName,
       embeddingFunction: this.embedder,
@@ -95,6 +96,7 @@ export class ChromaVectorStore implements VectorStore {
    * @returns Array of matching documents
    */
   async query(contextId: string, query: string): Promise<any[]> {
+
     const results = await this.collection.query({
       queryTexts: [query],
       nResults: 5,
@@ -102,6 +104,8 @@ export class ChromaVectorStore implements VectorStore {
         contextId: contextId,
       },
     });
+
+    console.log('chroma queryresults', results)
 
     return results.documents[0] || [];
   }

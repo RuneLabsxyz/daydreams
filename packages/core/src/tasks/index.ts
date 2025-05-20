@@ -70,7 +70,6 @@ export const runGenerate = task({
     { abortSignal }
   ) => {
     const isReasoningModel = reasoningModels.includes(model.modelId);
-
     const messages: CoreMessage[] = [
       {
         role: "user",
