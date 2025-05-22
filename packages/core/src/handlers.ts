@@ -944,6 +944,7 @@ export async function handleInput({
 
   logger.debug("agent:send", "Querying episodic memory");
 
+  /*
   const episodicMemory = await agent.memory.vector.query(
     `${ctxState.id}`,
     JSON.stringify(inputRef.data)
@@ -956,6 +957,8 @@ export async function handleInput({
   workingMemory.episodicMemory = {
     episodes: episodicMemory,
   };
+
+  */
 
   if (input.handler) {
     logger.debug("agent:send", "Using custom input handler", {

@@ -113,7 +113,7 @@ export function formatWorkingMemory({
     logs = logs.slice(-size);
   }
 
-  console.log("Logs", logs.map((i) => i.ref));
+  console.log("Logs", logs);
 
   return logs.map((i) => formatContextLog(i)).flat();
 }
