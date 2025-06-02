@@ -106,7 +106,7 @@ export const runGenerate = task({
         const response = await generateText({
           model,
           messages,
-          temperature: 0.2
+          temperature: 0.4
         });
   
         let getTextResponse = async () => response.text;
