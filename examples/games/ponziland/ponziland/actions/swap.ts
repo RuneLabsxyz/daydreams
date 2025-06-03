@@ -40,9 +40,6 @@ export const swap = (chain: StarknetChain) =>
         (t) => BigInt(t.address) == BigInt(data.buying_address)
       );
 
-      console.log("token_in", token_selling);
-      console.log("token_out", token_buying);
-
       if (!token_selling || !token_buying) {
         throw new Error("Token not found");
       }
@@ -65,23 +62,14 @@ export const swap = (chain: StarknetChain) =>
           sellAmount: "0x" + sellAmount.toString(16),
         };
 
-        console.log("Fetching quotes with params:", quoteParams);
-
         // Fetch quotes from AVNU
         const quotes = await fetch(
           `https://sepolia.api.avnu.fi/swap/v2/quotes?sellTokenAddress=${quoteParams.sellTokenAddress}&buyTokenAddress=${quoteParams.buyTokenAddress}&sellAmount=${quoteParams.sellAmount}`
         );
 
         let res = await quotes.json();
-        console.log("quotes", res);
-
-        console.log("Found quotes:", res.length);
         // Use the best quote (first one)
         const bestQuote = res[0];
-
-        console.log("Executing swap with AVNU SDK...");
-
-        console.log("bestQuote", bestQuote);
 
         // Execute the swap using AVNU SDK with the chain's account
         const swapResult = await executeAvnuSwap(
@@ -90,8 +78,6 @@ export const swap = (chain: StarknetChain) =>
           {},
           { baseUrl: "https://sepolia.api.avnu.fi" }
         );
-
-        console.log("Swap executed successfully:", swapResult);
 
         const result = {
           success: true,
@@ -106,7 +92,6 @@ export const swap = (chain: StarknetChain) =>
 
         return result;
       } catch (error) {
-        console.error("Swap failed:", error);
         throw new Error(
           `Swap failed: ${error instanceof Error ? error.message : "Unknown error"}`
         );

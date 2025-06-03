@@ -16,7 +16,6 @@ import {
   get_auction_yield,
   get_player_lands,
 } from "./actions/ponziland/querys";
-import { get_balances } from "./actions/get-balances";
 import { bid } from "./actions/ponziland/bid";
 import { buy } from "./actions/ponziland/buy";
 import {
@@ -27,7 +26,6 @@ import {
 import { claim_all } from "./actions/ponziland/claim";
 import { env } from "../env";
 import { swap } from "./actions/swap";
-import { discord } from "@daydreamsai/discord";
 
 const template = `
 
@@ -175,7 +173,6 @@ export const ponziland = (chain: StarknetChain) => {
       get_neighbors(chain),
       get_all_lands(chain),
       get_context(chain),
-      get_balances(chain),
       bid(chain),
       buy(chain),
       level_up(chain),

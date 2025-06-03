@@ -30,7 +30,7 @@ export const get_balances_str = async () => {
   // Retrieve balance and allowance info for each token via the contracts array.
 
   let tokens = await getAllTokensFromAPI();
-  console.log("tokens", tokens);
+
   const balancesData = await Promise.all(
     tokens.map(async (token) => {
       let abi = await provider.getClassAt(token.address);
@@ -63,7 +63,7 @@ export const get_balances_str = async () => {
   ${tokenBalances}
 
   `;
-  console.log("res", res);
+
   return res;
 };
 
@@ -76,8 +76,6 @@ export const get_lands_str = async (address: string) => {
     res?.ponziLandLandModels?.edges?.map((edge: any) => edge?.node)
   );
 
-  console.log(land_query);
-  console.log("lands", lands);
   if (!lands) {
     return "You do not own any lands";
   }
@@ -97,8 +95,6 @@ export const get_lands_str = async (address: string) => {
     })
   );
 
-  console.log("yields", yields);
-
   let land_str = lands
     .map(
       (land: any, index: number) =>
@@ -114,7 +110,6 @@ export const get_lands_str = async (address: string) => {
     )
     .join("\n");
 
-  console.log("land_str", land_str);
   return land_str;
 };
 
@@ -137,8 +132,6 @@ export const get_claims_str = async () => {
     })
   );
 
-  console.log("land_claims", land_claims);
-
   let tokens = await getAllTokensFromAPI();
 
   // Flatten the claims data and format it
@@ -160,8 +153,6 @@ export const get_claims_str = async () => {
       return `Land ${BigInt(land.location).toString()}:\n${landClaims}`;
     })
     .join("\n\n");
-
-  console.log("claims_str", claims);
 
   return claims;
 };
@@ -230,8 +221,6 @@ export const get_neighbors_str = async (location: number) => {
     })
     .join("\n");
 
-  console.log("get_all_lands_str", await get_all_lands_str());
-
   return res;
 };
 
@@ -249,7 +238,6 @@ export const get_all_lands_str = async () => {
   lands = lands.filter(
     (land: any) => land.owner != address && BigInt(land.owner) != BigInt(0)
   );
-  console.log("lands", lands);
 
   let land_str = lands
     .map(
@@ -279,7 +267,6 @@ export const get_auction_yield_str = async (location: number) => {
   neighbors.forEach((neighbor: any, index: number) => {
     if (neighbor.activeVariant() == "Land") {
       let value = neighbor.unwrap();
-      console.log("value", value);
       let neighbor_yield = neighbor_tax_rates[index];
       let neighbor_token = getTokenData(value.token_used, tokens);
       if (!neighbor_token) {
@@ -336,7 +323,6 @@ export const get_unowned_land_yield_str = async (location: number) => {
   neighbors.forEach((neighbor: any, index: number) => {
     if (neighbor.activeVariant() == "Land") {
       let value = neighbor.unwrap();
-      console.log("value", value);
       let neighbor_yield = neighbor_tax_rates[index];
       let neighbor_token = getTokenData(value.token_used, tokens);
       if (!neighbor_token) {
@@ -405,7 +391,6 @@ export const calculateLandYield = async (land: any, tokens: TokenPrice[]) => {
   let tax_rate = Number(
     await viewContract.get_tax_rate_per_neighbor(land.location)
   );
-  console.log("tax rate", tax_rate);
   if (token.ratio) {
     tax_rate = tax_rate * token.ratio;
   }
@@ -423,11 +408,9 @@ export const calculateLandYield = async (land: any, tokens: TokenPrice[]) => {
 
   let detailed_income = "";
 
-  console.log("tax_rate", tax_rate);
   neighbors.forEach((neighbor: any, index: number) => {
     if (neighbor.activeVariant() == "Land") {
       let value = neighbor.unwrap();
-      console.log("value", value);
       let neighbor_yield = neighbor_tax_rates[index];
       let neighbor_token = getTokenData(value.token_used, tokens);
       if (!neighbor_token) {
@@ -452,14 +435,10 @@ export const calculateLandYield = async (land: any, tokens: TokenPrice[]) => {
     }
   });
 
-  console.log("income", income);
-
   if (tax_rate == 0) {
     return 0;
   }
   let adjusted_income = BigInt(income) / BigInt(tax_rate);
-
-  console.log("adjusted income", adjusted_income);
 
   return `
   Income: ${formatTokenAmount(income)} estark

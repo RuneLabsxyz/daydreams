@@ -26,14 +26,9 @@ export async function getLiquidityPoolFromAPI(
     const tokens: TokenPrice[] = await response.json();
 
     const token = tokens.find((t) => {
-      console.log("t.address", t.address.toString());
-      console.log("tokenAddress", tokenAddress);
-      console.log(BigInt(t.address.toString()) == BigInt(tokenAddress));
 
       return BigInt(t.address.toString()) == BigInt(tokenAddress);
     });
-
-    console.log("token", token);
 
     if (!token || !token.best_pool) {
       return {
@@ -53,7 +48,6 @@ export async function getLiquidityPoolFromAPI(
       extension: token.best_pool.extension,
     };
   } catch (error) {
-    console.error("Error fetching liquidity pool:", error);
     return null;
   }
 }

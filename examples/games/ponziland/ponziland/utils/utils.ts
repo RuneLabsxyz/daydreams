@@ -84,12 +84,9 @@ export async function decodeTokenTransferEvents(
         };
       }
     );
-
-    console.log("tokenTotals", results);
-
+  
     return results;
   } catch (error) {
-    console.error("Error decoding events:", error);
     throw error;
   }
 }
