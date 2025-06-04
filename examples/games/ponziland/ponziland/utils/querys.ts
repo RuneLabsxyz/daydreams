@@ -1,11 +1,10 @@
-import { render } from "@daydreamsai/core";
 import { fetchGraphQL } from "@daydreamsai/core";
 import manifest from "../../contracts/ponziland_manifest_sepolia.json";
 import { CairoCustomEnum, Contract, RpcProvider, type Abi } from "starknet";
-import { balance_query, auction_query, land_query } from "../gql_querys";
-import { getAllTokensFromAPI } from "../utils/ponziland_api";
+import { auction_query, land_query } from "./gql_querys";
+import { getAllTokensFromAPI, type TokenPrice } from "./ponziland_api";
 import view_manifest from "../../contracts/view_manifest_sepolia.json";
-import { getTokenData, formatTokenAmount } from "../utils/utils";
+import { getTokenData, formatTokenAmount } from "./utils";
 import { env } from "../../env";
 
 let provider = new RpcProvider({ nodeUrl: env.STARKNET_RPC_URL });
@@ -391,7 +390,7 @@ export const calculateLandYield = async (land: any, tokens: TokenPrice[]) => {
   let tax_rate = Number(
     await viewContract.get_tax_rate_per_neighbor(land.location)
   );
-  if (token.ratio) {
+  if (token && token.ratio) {
     tax_rate = tax_rate * token.ratio;
   }
   let neighbors = await viewContract.get_neighbors(land.location);

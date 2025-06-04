@@ -140,8 +140,6 @@ export const ponziland_check = (chain: StarknetChain) =>
             context: context_str,
           };
 
-          console.log("ponziland context", context);
-
           send(ponzilandContext, context, { text });
           index += 1;
 
