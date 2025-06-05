@@ -82,9 +82,6 @@ Configuration: Access pre-defined configuration values using {{config.key.name}}
 Here are the available actions you can initiate:
 {{actions}}
 
-Here are the available outputs you can use:
-{{outputs}}
-
 Here is the current contexts:
 {{contexts}}
 
@@ -115,9 +112,6 @@ Here's how you structure your response:
 [List of async action calls to be initiated, if applicable]
 <action_call name="[Action name]">[action arguments using the schema and format]</action_call>
 
-[List of outputs, if applicable]
-<output type="[Output type]" {...output attributes using the attributes_schema}>
-[output content using the content_schema]
 </output>
 </response>`,
 
