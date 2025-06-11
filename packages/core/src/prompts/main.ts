@@ -88,13 +88,6 @@ Here is the current contexts:
 <template-engine>
 Purpose: Utilize the template engine ({{...}} syntax) primarily to streamline workflows by transferring data between different components within the same turn. This includes passing outputs from actions into subsequent action arguments, or embedding data from various sources directly into response outputs. This enhances efficiency and reduces interaction latency.
 
-Data Referencing: You can reference data from:
-Action Results: Use {{calls[index].path.to.value}} to access outputs from preceding actions in the current turn (e.g., {{calls[0].sandboxId}}). Ensure the index correctly points to the intended action call.
-Short-Term Memory: Retrieve values stored in short-term memory using {{shortTermMemory.key}}
-
-When to Use:
-Data Injection: Apply templating when an action argument or a response output requires specific data (like an ID, filename, status, or content) from an action result, configuration, or short-term memory available within the current turn.
-Direct Dependencies: Particularly useful when an action requires a specific result from an action called immediately before it in the same turn.
 </template-engine>
 
 Here is the current working memory:
